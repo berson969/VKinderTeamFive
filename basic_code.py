@@ -1,9 +1,11 @@
 from random import randrange
-
+import os
+from dotenv import load_dotenv
 import vk_api
 from vk_api.longpoll import VkLongPoll, VkEventType
 
-token = input('Token: ')
+load_dotenv()
+token = os.getenv('TOKEN')
 
 vk = vk_api.VkApi(token=token)
 longpoll = VkLongPoll(vk)
