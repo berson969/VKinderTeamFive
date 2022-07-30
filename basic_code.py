@@ -19,9 +19,9 @@ for event in longpoll.listen():
         if event.to_me:
             request = event.text
 
-            if request == "привет":
+            if request == "привет" and "Привет":
                 write_msg(event.user_id, f"Хай, {event.user_id}")
-            elif request == "пока":
+            elif request == "пока" and "Пока":
                 write_msg(event.user_id, "Пока((")
             else:
                 write_msg(event.user_id, "Не поняла вашего ответа...")
