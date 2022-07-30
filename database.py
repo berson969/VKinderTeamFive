@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 import sqlalchemy as sq
-from sqlalchemy import Column, Integer, String, ForeignKey, create_engine
+from sqlalchemy import Column, Integer, String, ForeignKey, create_engine, ForeignKeyConstraint
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 
 Base = declarative_base()
@@ -12,7 +12,7 @@ class Person(Base):
     __tablename__ = 'persons'
 
     vk_id = Column(Integer, primary_key=True)
-    name = Column(String(length=60))
+    name = Column(String(length=60), nullable=False)
     sex = Column(String, nullable=False)
     age = Column(String, nullable=False)
     city = Column(String, nullable=False)
@@ -24,6 +24,7 @@ class WhiteList(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('persons.vk_id'), nullable=False)
     select_id = Column(Integer, ForeignKey('persons.vk_id'), nullable=False)
+    ForeignKeyConstraint(['user_id', 'select_id'], ['persons.vk_id', 'persons.vk_id'])
 
 
 class BlackList(Base):
@@ -31,7 +32,10 @@ class BlackList(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('persons.vk_id'), nullable=False)
-    select_id = Column(Integer)
+    select_id = Column(Integer, nullable=False)
+    # ForeignKeyConstraint(['user_id', 'select_id'], ['persons.vk_id', 'blacklist.select_id'])
+    # blacklist = relationship(Person, backref='blacklist')
+    person = relationship(Person, backref='persons')
 
 
 def create_database(engine):
@@ -50,58 +54,55 @@ def open_session():
     return session
 
 
-def add_person_to_base(vk_id, name, sex, age, city):
+def add_person_to_base(dict_info):
     session = open_session()
-    new_person = Person(vk_id=vk_id, name=name, sex=sex, age=age, city=city)
+    new_person = Person(**dict_info)
     try:
         session.add(new_person)
         session.commit()
+        return True
     except sq.exc.IntegrityError:
         session.close()
+        return False
 
-
-# def add_person_to_base1(vk_id, **kwargs):
-#     session = open_session()
-#     data_key = 'vk_id=vk_id,'
-#     for key, value in kwargs.items():
-#         print (key, value)
-#         data_key += f' {key}={value},'
-#     data_key.strip(',')
-#     print(data_key)
-#     new_person = Person(kwargs)
-#     try:
-#         session.add(new_person)
-#         session.commit()
-#     except sq.exc.IntegrityError:
-#         session.close()
 
 def add_blacklist(user_id, select_id):
     session = open_session()
     blacklist_person = BlackList(user_id=user_id, select_id=select_id)
-    session.add(blacklist_person)
-    session.commit()
+    result = session.query(BlackList).filter(BlackList.user_id == user_id and BlackList.select_id == select_id).first()
+    if result is None:
+        session.add(blacklist_person)
+        session.commit()
+        return True
+    else:
+        session.close()
+        return False
 
 
-def add_whitelist(user_id, select_id, name, sex, age, city):
+def add_whitelist(user_id, select_id):
     session = open_session()
     whitelist_person = WhiteList(user_id=user_id, select_id=select_id)
-    add_person_to_base(select_id, name, sex, age, city)
-    session.add(whitelist_person)
-    session.commit()
+    result = session.query(WhiteList).filter(WhiteList.user_id == user_id and WhiteList.select_id == select_id).first()
+    if result is None:
+        # token = os.getenv('TOKEN')
+        # user = VK(token, select_id)
+        # select_dict_info = user.users_info()
+        select_dict_info = {'vk_id': os.getenv('SELECT_ID'), 'name': os.getenv('NAME'), 'sex': os.getenv('SEX'),
+                            'age': os.getenv('AGE'), 'city': os.getenv('CITY')}
+        add_person_to_base(select_dict_info)
+        session.add(whitelist_person)
+        session.commit()
+    else:
+        session.close()
+        return False
 
 
 if __name__ == "__main__":
     # open_session()
-    create_database(open_session().bind)
-    # kwargs = {}
-    # vk_id = os.getenv('VK_ID')
-    # kwargs['name'] = os.getenv('NAME')
-    # kwargs['gender'] = os.getenv('SEX')
-    # kwargs['birth_year'] = os.getenv('AGE')
-    # kwargs['town_residence'] = os.getenv('CITY')
-    # add_person_to_base1(vk_id, **kwargs)
-
-    add_person_to_base(os.getenv('VK_ID'), os.getenv('NAME'), os.getenv('SEX'), os.getenv('AGE'), os.getenv('CITY'))
+    # create_database(open_session().bind)
+    user_dict_info = {'vk_id': os.getenv('VK_ID'), 'name': os.getenv('NAME'), 'sex': os.getenv('SEX'),
+                      'age': os.getenv('AGE'), 'city': os.getenv('CITY')}
+    # print(user_dict_info)
+    add_person_to_base(user_dict_info)
     add_blacklist(os.getenv('VK_ID'), os.getenv('SELECT_ID'))
-    add_whitelist(os.getenv('VK_ID'), os.getenv('SELECT_ID'), os.getenv('NAME'), os.getenv('SEX'), os.getenv('AGE'), os.getenv('CITY'))
-
+    add_whitelist(os.getenv('VK_ID'), os.getenv('SELECT_ID'))
