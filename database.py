@@ -67,15 +67,13 @@ def add_person_to_base(dict_info):
 
 
 def add_blacklist(user_id, select_id):
-    session = open_session()
-    blacklist_person = BlackList(user_id=user_id, select_id=select_id)
-    result = session.query(BlackList).filter(BlackList.user_id == user_id and BlackList.select_id == select_id).first()
-    if result is None:
+    if check_blacklist(user_id, select_id) is True:
+        session = open_session()
+        blacklist_person = BlackList(user_id=user_id, select_id=select_id)
         session.add(blacklist_person)
         session.commit()
         return True
     else:
-        session.close()
         return False
 
 
@@ -101,7 +99,18 @@ def choose_favorite(vk_id):
     session = open_session()
     favorite = session.query(Person).join(WhiteList, (WhiteList.select_id == Person.vk_id)).\
         filter(WhiteList.user_id == vk_id).all()
+    session.close()
     return favorite
+
+
+def check_blacklist(user_id, select_id):
+    session = open_session()
+    result = session.query(BlackList).filter(BlackList.user_id == user_id and BlackList.select_id == select_id).first()
+    if result is None:
+        return True
+    else:
+        session.close()
+        return False
 
 
 if __name__ == "__main__":
