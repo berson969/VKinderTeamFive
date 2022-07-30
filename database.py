@@ -97,12 +97,20 @@ def add_whitelist(user_id, select_id):
         return False
 
 
+def choose_favorite(vk_id):
+    session = open_session()
+    favorite = session.query(Person).join(WhiteList, (WhiteList.select_id == Person.vk_id)).\
+        filter(WhiteList.user_id == vk_id).all()
+    return favorite
+
+
 if __name__ == "__main__":
     # open_session()
     # create_database(open_session().bind)
     user_dict_info = {'vk_id': os.getenv('VK_ID'), 'name': os.getenv('NAME'), 'sex': os.getenv('SEX'),
                       'age': os.getenv('AGE'), 'city': os.getenv('CITY')}
     # print(user_dict_info)
-    add_person_to_base(user_dict_info)
-    add_blacklist(os.getenv('VK_ID'), os.getenv('SELECT_ID'))
-    add_whitelist(os.getenv('VK_ID'), os.getenv('SELECT_ID'))
+    # add_person_to_base(user_dict_info)
+    # add_blacklist(os.getenv('VK_ID'), os.getenv('SELECT_ID'))
+    # add_whitelist(os.getenv('VK_ID'), os.getenv('SELECT_ID'))
+    choose_favorite(os.getenv('VK_ID'))

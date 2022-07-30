@@ -9,3 +9,4 @@
   - `add_whitelist(user_id, select_id, name, sex, age, city)` добавляет в белый лист и записывает
   выбранного в базу данных
   - `add_blacklist(user_id, select_id)` добавляет в черный лист, в таблицу `Person` ничего не пишет
+  - `choose_favorite(vk_id)`   выбирает всех фаворитов для выбранного юзера
