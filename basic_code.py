@@ -17,11 +17,11 @@ for event in longpoll.listen():
     if event.type == VkEventType.MESSAGE_NEW:
 
         if event.to_me:
-            request = event.text
+            request = event.text.lower()
 
-            if request == "привет" or "Привет":
+            if request == "привет":
                 write_msg(event.user_id, f"Хай, {event.user_id}")
-            elif request == "пока" or "Пока":
+            elif request == "пока":
                 write_msg(event.user_id, "Пока((")
             else:
                 write_msg(event.user_id, "Не поняла вашего ответа...")
