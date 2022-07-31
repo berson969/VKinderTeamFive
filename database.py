@@ -85,15 +85,17 @@ def add_blacklist(user_id, select_id):
 # добавляет в белый лист и записывает выбранного в базу данных
 def add_whitelist(user_id, select_id):
     session = open_session()
+    if session.query(Person).filter(Person.vk_id == user_id).first() is None:
+        add_person_to_base(user.users_info(user_id))
     whitelist_person = WhiteList(user_id=user_id, select_id=select_id)
     result = session.query(WhiteList).filter(WhiteList.user_id == user_id and WhiteList.select_id == select_id).first()
     if result is None:
         # token = os.getenv('TOKEN')
         # user = VK(token, select_id)
         # select_dict_info = user.users_info()
-        select_dict_info = {'vk_id': os.getenv('SELECT_ID'), 'name': os.getenv('NAME'), 'sex': os.getenv('SEX'),
-                            'age': os.getenv('AGE'), 'city': os.getenv('CITY')}
-        add_person_to_base(select_dict_info)
+        # select_dict_info = {'vk_id': os.getenv('SELECT_ID'), 'name': os.getenv('NAME'), 'sex': os.getenv('SEX'),
+        #                     'age': os.getenv('AGE'), 'city': os.getenv('CITY')}
+        add_person_to_base(user.users_info(select_id))
         session.add(whitelist_person)
         session.commit()
     else:
@@ -104,8 +106,7 @@ def add_whitelist(user_id, select_id):
 # выбирает всех фаворитов для выбранного юзера
 def choose_favorite(vk_id):
     session = open_session()
-    favorite = session.query(Person).join(WhiteList, (WhiteList.select_id == Person.vk_id)).\
-        filter(WhiteList.user_id == vk_id).all()
+    favorite = session.query(Person).join(WhiteList, (WhiteList.select_id == Person.vk_id)).filter(WhiteList.user_id == vk_id).all()
     session.close()
     return favorite
 
@@ -122,15 +123,13 @@ def check_blacklist(user_id, select_id):
 
 
 if __name__ == "__main__":
+    load_dotenv()
     # open_session()
     # использовать только один раз для открытии базы, после строку закомментировать
     create_database(open_session().bind)
-    user_dict_info = {'vk_id': os.getenv('VK_ID'), 'name': os.getenv('NAME'), 'sex': os.getenv('SEX'),
-                      'age': os.getenv('AGE'), 'city': os.getenv('CITY')}
-    # print(user_dict_info)
-    user = VK(os.getenv('TOKEN2'))
-
-    add_person_to_base(user.users_info(os.getenv('L_VK_ID')))
-    # add_blacklist(os.getenv('VK_ID'), os.getenv('SELECT_ID'))
-    # add_whitelist(os.getenv('VK_ID'), os.getenv('SELECT_ID'))
-    # choose_favorite(os.getenv('VK_ID'))
+    # user = VK(os.getenv('TOKEN2'))
+    # # add_person_to_base(user.users_info(os.getenv('VK_ID')))
+    # # add_blacklist(os.getenv('VK_ID'), os.getenv('N_VK_ID'))
+    # # add_whitelist(os.getenv('N_VK_ID'), os.getenv('SELECT_ID'))
+    # response = choose_favorite(os.getenv('VK_ID'))
+    # print(response)

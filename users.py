@@ -1,11 +1,10 @@
 import requests
-from datetime import datetime
 import os
 from dotenv import load_dotenv
-from pprint import pprint
 
 
-def _count_likes(response1, count_dict={}):
+def _count_likes(response1):
+    count_dict = {}
     for i, item in enumerate(response1['response']['items']):
         count_dict[i] = sum(item['likes'].values())
     return sorted(count_dict, key=count_dict.get, reverse=True)
@@ -21,7 +20,8 @@ class VK:
         self.version = version
         self.params = {'access_token': self.token, 'v': self.version}
 
-    def users_info(self, vk_id):
+    def users_info(self, vk_id: str, length=3):
+        self.length = length
         params = {'user_ids': vk_id, 'fields': 'bdate, sex, city'}
         response = requests.get(f'{self.URL}users.get', params={**self.params, **params}).json()
         # print(response)
@@ -42,25 +42,23 @@ class VK:
             self.user_dict_info['sex'] = response['response'][0]['sex']
         params1 = {'owner_id': vk_id, 'album_id': 'profile', 'extended': '1', 'photo_size': '1'}
         response1 = requests.get(f'{self.URL}photos.get', params={**self.params, **params1}).json()
-        key_list = _count_likes(response1)
-        for i in range(3):
-            for result in response1['response']['items'][key_list[i]]['sizes']:
-                if result['type'] == 'y':
-                    self.user_dict_info[f'photo{i}'] = result['url']
-        return self.user_dict_info
+        try:
+            key_list = _count_likes(response1)
+            # print(response1)
+            if len(key_list) < self.length:
+                self.length = len(key_list)
+            for i in range(self.length):
+                for result in response1['response']['items'][key_list[i]]['sizes']:
+                    if result['type'] == 'y':
+                        self.user_dict_info[f'photo{i}'] = result['url']
+            return self.user_dict_info
+        except KeyError:
+            return self.user_dict_info
 
 
 if __name__ == '__main__':
     load_dotenv()
     access_token = os.getenv('TOKEN2')
-    # vk_id = '552934290' # test
-    # vk_id = '249815131'  #liliya
-    # vk_id = '214792702'
-    vk_id = '611864369'  # leonid
-    # vk_id = '7312956' #michail
-    # vk_id = '-8231976' #vkinder2
-    # vk_id = 'mixail_dubrovin'
-    # user_id = 'mixail_dubrovin'
     user = VK(access_token)
-    print(user.users_info(vk_id))
+    print(user.users_info(os.getenv('N_VK_ID')))
 
