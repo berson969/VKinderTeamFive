@@ -124,7 +124,7 @@ def check_blacklist(user_id, select_id):
 
 if __name__ == "__main__":
     load_dotenv()
-    # open_session()
+    open_session()
     # использовать только один раз для открытии базы, после строку закомментировать
     create_database(open_session().bind)
     # user = VK(os.getenv('TOKEN2'))
