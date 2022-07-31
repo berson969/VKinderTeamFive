@@ -1,7 +1,7 @@
 import requests
 import os
 from dotenv import load_dotenv
-
+from pprint import pprint
 
 def _count_likes(response1):
     count_dict = {}
@@ -25,7 +25,9 @@ class VK:
         params = {'user_ids': vk_id, 'fields': 'bdate, sex, city'}
         response = requests.get(f'{self.URL}users.get', params={**self.params, **params}).json()
         # print(response)
-        if 'deactivate' in response['response'][0].keys():
+        if not response['response']:
+            return False
+        elif 'deactivated' in response['response'][0].keys():
             return False
         else:
             self.user_dict_info['vk_id'] = response['response'][0]['id']
@@ -44,12 +46,16 @@ class VK:
         response1 = requests.get(f'{self.URL}photos.get', params={**self.params, **params1}).json()
         try:
             key_list = _count_likes(response1)
-            # print(response1)
+            pprint(response1)
             if len(key_list) < self.length:
                 self.length = len(key_list)
             for i in range(self.length):
                 for result in response1['response']['items'][key_list[i]]['sizes']:
-                    if result['type'] == 'y':
+                    if result['type'] == 'x':
+                        self.user_dict_info[f'photo{i}'] = result['url']
+                    elif result['type'] == 'y':
+                        self.user_dict_info[f'photo{i}'] = result['url']
+                    elif result['type'] == 'z':
                         self.user_dict_info[f'photo{i}'] = result['url']
             return self.user_dict_info
         except KeyError:

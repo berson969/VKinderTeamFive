@@ -59,15 +59,16 @@ def open_session():
 
 # добавляет юзера в базу
 def add_person_to_base(dict_info):
-    session = open_session()
-    new_person = Person(**dict_info)
-    try:
-        session.add(new_person)
-        session.commit()
-        return True
-    except sq.exc.IntegrityError:
-        session.close()
-        return False
+    if isinstance(dict_info, dict):
+        session = open_session()
+        try:
+            new_person = Person(**dict_info)
+            session.add(new_person)
+            session.commit()
+            return True
+        except sq.exc.IntegrityError:
+            session.close()
+    return False
 
 
 # добавляет в черный лист, в таблицу `Person` ничего не пишет
@@ -87,14 +88,9 @@ def add_whitelist(user_id, select_id):
     session = open_session()
     if session.query(Person).filter(Person.vk_id == user_id).first() is None:
         add_person_to_base(user.users_info(user_id))
-    whitelist_person = WhiteList(user_id=user_id, select_id=select_id)
-    result = session.query(WhiteList).filter(WhiteList.user_id == user_id and WhiteList.select_id == select_id).first()
+    result = session.query(WhiteList).filter(WhiteList.select_id == select_id and WhiteList.user_id == user_id).first()
     if result is None:
-        # token = os.getenv('TOKEN')
-        # user = VK(token, select_id)
-        # select_dict_info = user.users_info()
-        # select_dict_info = {'vk_id': os.getenv('SELECT_ID'), 'name': os.getenv('NAME'), 'sex': os.getenv('SEX'),
-        #                     'age': os.getenv('AGE'), 'city': os.getenv('CITY')}
+        whitelist_person = WhiteList(user_id=user_id, select_id=select_id)
         add_person_to_base(user.users_info(select_id))
         session.add(whitelist_person)
         session.commit()
@@ -114,7 +110,7 @@ def choose_favorite(vk_id):
 # проверяет есть ли выбранная личность в черном списке
 def check_blacklist(user_id, select_id):
     session = open_session()
-    result = session.query(BlackList).filter(BlackList.user_id == user_id and BlackList.select_id == select_id).first()
+    result = session.query(BlackList).filter(BlackList.select_id == select_id and BlackList.user_id == user_id).first()
     if result is None:
         return True
     else:
@@ -127,9 +123,13 @@ if __name__ == "__main__":
     open_session()
     # использовать только один раз для открытии базы, после строку закомментировать
     create_database(open_session().bind)
-    # user = VK(os.getenv('TOKEN2'))
-    # # add_person_to_base(user.users_info(os.getenv('VK_ID')))
-    # # add_blacklist(os.getenv('VK_ID'), os.getenv('N_VK_ID'))
-    # # add_whitelist(os.getenv('N_VK_ID'), os.getenv('SELECT_ID'))
+    user = VK(os.getenv('TOKEN2'))
+    add_person_to_base(user.users_info(os.getenv('VK_3')))
+    # add_blacklist(os.getenv('VK_ID'), os.getenv('N_VK_ID'))
+    # add_whitelist(os.getenv('VK_ID'), os.getenv('L_VK_ID'))
     # response = choose_favorite(os.getenv('VK_ID'))
-    # print(response)
+    # for row in response:
+    #     print(row.vk_id, row.name)
+    # print(check_blacklist(os.getenv('VK_ID'), os.getenv('LL_VK_ID')))
+
+
