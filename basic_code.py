@@ -3,9 +3,11 @@ import os
 from dotenv import load_dotenv
 import vk_api
 from vk_api.longpoll import VkLongPoll, VkEventType
+from access_token import getting_token
+
 
 load_dotenv()
-token = os.getenv('TOKEN')
+token = getting_token(os.getenv('VK_LOGIN'), os.getenv('VK_PASSWORD'), os.getenv('CLIENT_ID2'), os.getenv('GROUP_ID2'))
 
 vk = vk_api.VkApi(token=token)
 longpoll = VkLongPoll(vk)

@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import sqlalchemy as sq
 from sqlalchemy import Column, Integer, String, ForeignKey, create_engine, ForeignKeyConstraint
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
-from users import VK
+from users import VKcls
 
 Base = declarative_base()
 
@@ -15,8 +15,9 @@ class Person(Base):
     vk_id = Column(Integer, primary_key=True)
     name = Column(String(length=60), nullable=False)
     sex = Column(Integer, nullable=False)
-    birth_year = Column(String, nullable=False)
-    city = Column(String, nullable=False)
+    birth_date = Column(String, nullable=False)
+    city_id = Column(Integer, nullable=True)
+    city = Column(String, nullable=True)
     photo0 = Column(String)
     photo1 = Column(String)
     photo2 = Column(String)
@@ -120,11 +121,12 @@ def check_blacklist(user_id, select_id):
 
 if __name__ == "__main__":
     load_dotenv()
-    open_session()
+    # open_session()
     # использовать только один раз для открытии базы, после строку закомментировать
-    create_database(open_session().bind)
-    user = VK(os.getenv('TOKEN2'))
-    add_person_to_base(user.users_info(os.getenv('VK_3')))
+    # create_database(open_session().bind)
+    token = os.getenv('ACCESS_TOKEN_214815089', )
+    user = VKcls(os.getenv('ACCESS_TOKEN_214815089'), os.getenv('ACCESS_USER_berson2005@yandex.ru'))
+    add_person_to_base(user.users_info(os.getenv('M_VK_ID')))
     # add_blacklist(os.getenv('VK_ID'), os.getenv('N_VK_ID'))
     # add_whitelist(os.getenv('VK_ID'), os.getenv('L_VK_ID'))
     # response = choose_favorite(os.getenv('VK_ID'))
