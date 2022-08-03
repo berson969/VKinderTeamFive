@@ -17,7 +17,6 @@ class VK:
     def users_info(self, vk_id: str):
         params = {'user_ids': vk_id, 'fields': 'bdate, sex, city'}
         response = requests.get(f'{self.URL}users.get', params={**self.params, **params}).json()
-        # print(response)
         if not response['response']:
             return False
         elif 'deactivated' in response['response'][0].keys():
@@ -48,8 +47,7 @@ class VK:
         функция  выводит список пользователей с указанным годом рожнения, городом и полом
         '''
         user_list = []
-        #sex = [2, 1][sex-1] # эта строка меняет пол на противоположный,
-        # наверно надо вставить перед вызовом этой функии
+        #sex = [2, 1][sex-1] эта строка меняет пол на противоположный, надо вставить перед вызовом этой функии
         # и еще может быть значение 0 когда пол не указан, тоже надо учесть
         params = {'hometown': sity, 'birth_year': birth_year, 'sex': sex}
         response = requests.get(f'{self.URL}users.search', params={**self.params, **params}).json()
@@ -68,7 +66,6 @@ class VK:
         for item in response['response']['items']:
             photo_dict = {'id': item['id'], 'likes': item['likes']['count']}
             photo_list.append(photo_dict)
-
         return sorted(photo_list, key=lambda d: d['likes'])[:3]
 
 
@@ -82,7 +79,3 @@ if __name__ == '__main__':
     pprint(user.photos_get('7312956'))
     sex = [2, 1][sex - 1]
     pprint(user.search_users(birth_year, sex, city))
-
-
-
-
