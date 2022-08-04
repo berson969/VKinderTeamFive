@@ -28,14 +28,14 @@ class VK:
             if 'city' in response['response'][0].keys():
                 self.user_dict_info['city'] = response['response'][0]['city']['title']
             else:
-                self.user_dict_info['city'] = None
+                self.user_dict_info['city'] = None #если город не указан поиск будет тоже без указания на конкретный город
             if 'bdate' in response['response'][0].keys():
                 if len(response['response'][0]['bdate'].split('.')) == 3:
                     self.user_dict_info['birth_year'] = int(response['response'][0]['bdate'].split('.')[-1])
                 else:
-                    self.user_dict_info['birth_year'] = None
+                    self.user_dict_info['birth_year'] = None #если год рождения не указан поиск будет тоже без указания на конкретный год рождения
             else:
-                self.user_dict_info['birth_year'] = None
+                self.user_dict_info['birth_year'] = None  #если дата рождения не указан поиск будет тоже без указания на конкретной даты рождения
             self.user_dict_info['sex'] = response['response'][0]['sex']
         try:
             return self.user_dict_info
@@ -44,7 +44,7 @@ class VK:
 
     def search_users(self, birth_year, sex: int, sity: str):
         '''
-        функция  выводит список пользователей с указанным годом рожнения, городом и полом
+        функция  выводит список пользователей в виде словаря с ключами: 'id' и 'имя'
         '''
         user_list = []
         #sex = [2, 1][sex-1] эта строка меняет пол на противоположный, надо вставить перед вызовом этой функии
@@ -56,7 +56,7 @@ class VK:
             user_list.append(user_info_dict)
         return user_list
 
-    def photos_get(self, vk_id):
+    def photos_get(self, vk_id: str):
         '''функция выводит список словарей состоящих из ID фотографии
         и количества лайков 3 самых популярных фотографий
         '''
