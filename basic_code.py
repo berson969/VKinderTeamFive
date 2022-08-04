@@ -11,7 +11,7 @@ vk = vk_api.VkApi(token=token)
 longpoll = VkLongPoll(vk)
 
 
-def write_msg(user_id, message):
+def write_msg(user_id, message, keyboard=None):
     vk.method('messages.send', {'user_id': user_id, 'message': message,  'random_id': randrange(10 ** 7)})
  
 def get_but(text, color):
