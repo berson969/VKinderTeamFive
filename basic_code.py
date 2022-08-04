@@ -13,6 +13,16 @@ longpoll = VkLongPoll(vk)
 
 def write_msg(user_id, message):
     vk.method('messages.send', {'user_id': user_id, 'message': message,  'random_id': randrange(10 ** 7)})
+ 
+def get_but(text, color):
+    return {
+        "action": {
+            "type": "text",
+            "payload": "{\"button\": \"" + "1" + "\"}",
+            "label": f"{text}"
+        },
+        "color": f"{color}"
+    }
 
 
 def write_users_photo(user_id, photo_id):
@@ -35,3 +45,4 @@ for event in longpoll.listen():
                 write_msg(event.user_id, "Пока((")
             else:
                 write_msg(event.user_id, "Не поняла вашего ответа...")
+             
