@@ -10,3 +10,4 @@ vk-api==11.9.9
 pytest~=7.1.2
 vk~=3.0
 selenium~=4.3.0
+python-dateutil~=2.8.2

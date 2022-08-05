@@ -1,11 +1,11 @@
 import os
-from datetime import datetime
 from dotenv import load_dotenv
 import sqlalchemy as sq
 from sqlalchemy import Column, Integer, String, ForeignKey, create_engine, ForeignKeyConstraint
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
-from users import VKcls
+from users import VKclass
 
+load_dotenv()
 Base = declarative_base()
 
 
@@ -13,7 +13,8 @@ class Person(Base):
     __tablename__ = 'persons'
 
     vk_id = Column(Integer, primary_key=True)
-    name = Column(String(length=60), nullable=False)
+    first_name = Column(String(length=30), nullable=False)
+    last_name = Column(String(length=30), nullable=False)
     sex = Column(Integer, nullable=False)
     birth_date = Column(String, nullable=False)
     city_id = Column(Integer, nullable=True)
@@ -21,6 +22,7 @@ class Person(Base):
     photo0 = Column(String)
     photo1 = Column(String)
     photo2 = Column(String)
+
 
 class WhiteList(Base):
     __tablename__ = 'whitelist'
@@ -42,13 +44,7 @@ class BlackList(Base):
     person = relationship(Person, backref='persons')
 
 
-def create_database(engine):
-    Base.metadata.drop_all(engine)
-    Base.metadata.create_all(engine)
-
-
 def open_session():
-    load_dotenv()
     driver = 'postgresql+psycopg2'
     path_db = 'localhost:5432'
     DSN = f"{driver}://{os.getenv('USER')}:{os.getenv('PASSWORD')}@{path_db}/v_kinder_db"
@@ -56,6 +52,12 @@ def open_session():
     Session = sessionmaker(bind=engine)
     session = Session()
     return session
+
+
+def create_database():
+    session = open_session()
+    Base.metadata.drop_all(session.bind)
+    Base.metadata.create_all(session.bind)
 
 
 # добавляет юзера в базу
@@ -103,7 +105,8 @@ def add_whitelist(user_id, select_id):
 # выбирает всех фаворитов для выбранного юзера
 def choose_favorite(vk_id):
     session = open_session()
-    favorite = session.query(Person).join(WhiteList, (WhiteList.select_id == Person.vk_id)).filter(WhiteList.user_id == vk_id).all()
+    favorite = session.query(Person).join(WhiteList, (WhiteList.select_id == Person.vk_id)).filter(
+        WhiteList.user_id == vk_id).all()
     session.close()
     return favorite
 
@@ -120,12 +123,9 @@ def check_blacklist(user_id, select_id):
 
 
 if __name__ == "__main__":
-    load_dotenv()
-    # open_session()
     # использовать только один раз для открытии базы, после строку закомментировать
-    # create_database(open_session().bind)
-    token = os.getenv('ACCESS_TOKEN_214815089', )
-    user = VKcls(os.getenv('ACCESS_TOKEN_214815089'), os.getenv('ACCESS_USER_berson2005@yandex.ru'))
+    # create_database()
+    user = VKclass(os.getenv('GROUP_TOKEN_214815089'), os.getenv('USER_TOKEN_berson2005@yandex.ru'))
     add_person_to_base(user.users_info(os.getenv('M_VK_ID')))
     # add_blacklist(os.getenv('VK_ID'), os.getenv('N_VK_ID'))
     # add_whitelist(os.getenv('VK_ID'), os.getenv('L_VK_ID'))
@@ -133,5 +133,3 @@ if __name__ == "__main__":
     # for row in response:
     #     print(row.vk_id, row.name)
     # print(check_blacklist(os.getenv('VK_ID'), os.getenv('LL_VK_ID')))
-
-

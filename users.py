@@ -4,100 +4,111 @@ import requests
 import os
 from dotenv import load_dotenv
 from pprint import pprint
-
-from access_token import getting_tokens
-
-
-def _count_likes(response):
-    count_dict = {}
-    for i, item in enumerate(response['response']['items']):
-        count_dict[i] = sum(item['likes'].values())
-    return sorted(count_dict, key=count_dict.get, reverse=True)
+from bot_auth import Auth
 
 
-class VKcls:
+URL = 'https://api.vk.com/method/'
 
-    def __init__(self, access_token, token, version='5.131'):
-        self.user_dict_info = {}
-        self.photos_list = []
-        self.URL = 'https://api.vk.com/method/'
-        self.access_token = access_token
-        self.token = token
-        self.version = version
-        self.params = {'access_token': self.access_token, 'v': self.version}
-        self.params1 = {'access_token': self.token, 'v': self.version}
 
-    def users_info(self, vk_id: str, length=3):
-        self.length = length
+class VKclass(Auth):
+    """
+            Класс для запросов и поиска users в базе данных VK. Аутентификация производится через базовый класс Auth
+
+    """
+
+    def __init__(self, version='5.131'):
+        super().__init__('VKclass')
+        self.gr_params = {'access_token': self.gr_token, 'v': version}
+        self.us_params = {'access_token': self.us_token, 'v': version}
+
+    def users_info(self, vk_id: int):
+
+        '''
+                Функция получает id пользователя ВК и возвращает данные по нему в виде словаря
+        :param vk_id: id user VK
+        :return: user_dict_info { 'vk_id': , 'first_name': , 'last_name': 'sex':
+                                 'city_id': , 'city': ,'birth_date':
+                                 }
+        '''
+
         params = {'user_ids': vk_id, 'fields': 'bdate, sex, city'}
-        response = requests.get(f'{self.URL}users.get', params={**self.params, **params}).json()
-        print(response)
+        response = requests.get(f'{URL}users.get', params={**self.gr_params, **params}).json()
+        # print(response)
         if not response['response']:
             return False
         elif 'deactivated' in response['response'][0].keys():
             return False
         else:
-            self.user_dict_info['vk_id'] = response['response'][0]['id']
-            self.user_dict_info['name'] = response['response'][0]['first_name'] + ' ' + response['response'][0][
-                'last_name']
+            user_dict_info = {'vk_id': response['response'][0]['id'],
+                              'first_name': response['response'][0]['first_name'],
+                              'last_name': response['response'][0]['last_name'],
+                              'sex': response['response'][0]['sex']
+                              }
             if 'city' in response['response'][0].keys():
-                self.user_dict_info['city_id'] = response['response'][0]['city']['id']
-                self.user_dict_info['city'] = response['response'][0]['city']['title']
+                user_dict_info['city_id'] = response['response'][0]['city']['id']
+                user_dict_info['city'] = response['response'][0]['city']['title']
             else:
-                self.user_dict_info['city'] = ''
+                user_dict_info['city_id'] = 0
+                user_dict_info['city'] = ''
             if 'bdate' in response['response'][0].keys():
-                self.user_dict_info['birth_date'] = response['response'][0]['bdate']
+                user_dict_info['birth_date'] = response['response'][0]['bdate']
             else:
-                self.user_dict_info['birth_year'] = ''
-            self.user_dict_info['sex'] = response['response'][0]['sex']
-        params1 = {'owner_id': vk_id, 'album_id': 'profile', 'extended': '1', 'photo_size': '1'}
-        response1 = requests.get(f'{self.URL}photos.get', params={**self.params, **params1}).json()
-        try:
-            key_list = _count_likes(response1)
-            # pprint(response1)
-            if len(key_list) < self.length:
-                self.length = len(key_list)
-            for i in range(self.length):
-                for result in response1['response']['items'][key_list[i]]['sizes']:
-                    if result['type'] == 'x':
-                        self.user_dict_info[f'photo{i}'] = result['url']
-                    elif result['type'] == 'y':
-                        self.user_dict_info[f'photo{i}'] = result['url']
-                    elif result['type'] == 'z':
-                        self.user_dict_info[f'photo{i}'] = result['url']
-            return self.user_dict_info
-        except KeyError:
-            return self.user_dict_info
+                user_dict_info['birth_date'] = ''
+        return user_dict_info
 
-    def search_users(self, client_city, client_sex, birth_day, offset=0):
-        today = datetime.datetime.now()
-        bd = parse(birth_day)
-        delta = (datetime.datetime.now() - parse(birth_day)).days
-        age = int(delta / 365)
-        # age = int((datetime.datetime.now() - parse(birth_day)).days / 365)
-        if client_sex == 1:
+    def photos_get(self, vk_id: int):
+        """
+                 Функция выводит список словарей состоящих из ID фотографии
+                и количества лайков 3 самых популярных фотографий
+
+        :param vk_id: id user VK
+        :return: photo_list список словарей [ {'id': , 'likes': , 'photo_name': }, ... ,  ]
+        """
+
+        photo_list = []
+        params = {'owner_id': vk_id, 'album_id': 'profile', 'extended': '1', 'photo_size': '1'}
+        response = requests.get(f'{URL}photos.get', params={**self.us_params, **params}).json()
+        # pprint(response)
+        for item in response['response']['items']:
+            photo_dict = {'id': item['id'], 'likes': item['likes']['count'] + item['likes']['user_likes'],
+                          'photo_name': f"photo{item['owner_id']}_{item['id']}"}
+            photo_list.append(photo_dict)
+        return sorted(photo_list, key=lambda d: d['likes'])[:3]
+
+    def search_users(self, dict_info, offset=0):
+        if len(dict_info['birth_date']) != 10:
+            age = 35
+            # raise TypeError
+        else:
+            age = int((datetime.datetime.now() - parse(dict_info['birth_date'])).days / 365)
+        if dict_info['sex'] == 1:
             sex_opposite = 2
             age -= 5
-        elif client_sex == 2:
+        elif dict_info['sex'] == 2:
             sex_opposite = 1
             age += 5
         else:
-            sex_opposite = client_sex
-        params = {'count': 10, 'offset': offset, 'city': client_city,
+            sex_opposite = 0
+        params = {'count': 10, 'offset': offset, 'city': dict_info['city_id'],
                   'sex': sex_opposite, 'status': [1, 5, 6],
                   'age from': age - 5, 'age_to': age + 5, 'has_photo': 1,
-                  'fields': ['photo',' screen_name']
+                  'fields': ['photo', ' screen_name']
                   }
-        response = requests.get(f'{self.URL}users.search', params={**self.params1, **params}).json()
+        response = requests.get(f'{URL}users.search', params={**self.gr_params, **params}).json()
         return response
 
 
 if __name__ == '__main__':
     load_dotenv()
-    access_token = os.getenv('ACCESS_TOKEN_214815089')
+    # print(os.getenv('M_VK_ID'))
+    # access_token = os.getenv('GROUP_TOKEN_214815089')
     # token = getting_tokens(os.getenv('VK_LOGIN'), os.getenv('VK_PASSWORD'), os.getenv('CLIENT_ID2'),
     #                       os.getenv('GROUP_ID2'))
-    token = os.getenv('ACCESS_USER_berson2005@yandex.ru')
-    user = VKcls(access_token, token)
+    # access_user = os.getenv('USER_TOKEN_berson2005@yandex.ru')
+    user = VKclass()
+    print(user.__repr__())
+    result = user.users_info(os.getenv('M_VK_ID'))
+    result1 = user.photos_get(result['vk_id'])
     # print(user.users_info(os.getenv('N_VK_ID')))
-    pprint(user.search_users( 1141821, 2, '10.10.1950'))
+    # pprint(user.search_users( result))
+    pprint(result1)
