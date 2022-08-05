@@ -5,7 +5,7 @@ from vk_api.bot_longpoll import VkBotEventType, VkBotLongPoll
 from vk_api.utils import get_random_id
 from dotenv import load_dotenv
 import vk_api
-from vk_api.longpoll import VkLongPoll, VkEventType
+# from vk_api.longpoll import VkLongPoll, VkEventType
 from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 import json
 
@@ -25,22 +25,44 @@ class DatingBot(Auth):
 
 
     def messagerBot(self):
-        for event in self.longpoll.listen():
-            if event.type == VkBotEventType.MESSAGE_NEW:
+        for self.event in self.longpoll.listen():
+            if self.event.type == VkBotEventType.MESSAGE_NEW:
                 # vk_id = event.message['from_id']
                 # print(vk_id)
                 user = VKclass()
-                user_info = user.users_info(event.message['from_id'])
+                user_info = user.users_info(self.event.message['from_id'])
                 params = {
-                    'user_id': event.message['from_id'],
+                    'user_id': self.event.message['from_id'],
                     'message': f"Хай, {user_info['first_name']}",
                     'random_id': get_random_id()
                 }
                 self.write_msg(params)
                 keyboard = self.make_keyboard()
-                params = {'user_id': event.message['from_id'], 'message': 'Хочешь познакомиться?',
+                params = {'user_id': self.event.message['from_id'], 'message': 'Хочешь познакомиться?',
                           'random_id': get_random_id(), 'keyboard': keyboard}
                 self.write_msg(params)
+
+            elif self.event.type == VkBotEventType.MESSAGE_EVENT:
+                if self.event.obj['payload']['cmd'] == "search_users":
+                    response = user.search_users(user_info)
+                    for selected in response:
+                        long_photo_name = ''
+                        for photo_name in user.photos_get(selected['id']):
+                            long_photo_name += photo_name['photo_name'] + ','
+                        long_photo_name.rstrip(',')
+                        params = {   'user_id': self.event.message['from_id'],
+                                     'message': f'{selected['first_name']} {selected['last_name']}\nhttps://vk.com/id{selected['id']}',
+                                     'attachment' : long_photo_name,
+                                     'random_id': get_random_id()
+                                     'keyboard': self.make_keyboard1()}
+                        self.write_msg(params)
+                elif self.event.obj['payload']['cmd'] == "add_whitelist":
+
+
+                elif self.event.obj['payload']['cmd'] == "add_blacklist":
+
+
+
 
     def write_msg(self, params):
         self.vk_gr_session.method('messages.send', params)
@@ -54,6 +76,20 @@ class DatingBot(Auth):
         payload = None
         self.keyboard.add_callback_button(label='Нет, спасибо...', color=VkKeyboardColor.SECONDARY, payload=payload)
         return self.keyboard.get_keyboard()
+
+
+    def make_keyboard1(self):
+        self.settings = dict(one_time=False, inline=True)
+        self.keyboard = VkKeyboard(**self.settings)
+        payload = {"cmd": "add_whitelist"}
+        self.keyboard.add_callback_button(label='Нравиться', color=VkKeyboardColor.POSITIVE, payload=payload)
+        payload = None
+        payload = {"cmd": "add_blacklist"}
+        self.keyboard.add_callback_button(label='Не нравиться', color=VkKeyboardColor.PRIMARY, payload=payload)
+        return self.keyboard.get_keyboard()
+
+
+     # def create_info_selected(self):
 
 
 if __name__ == '__main__':

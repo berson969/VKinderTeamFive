@@ -62,7 +62,7 @@ class VKclass(Auth):
                 и количества лайков 3 самых популярных фотографий
 
         :param vk_id: id user VK
-        :return: photo_list список словарей [ {'id': , 'likes': , 'photo_name': }, ... ,  ]
+        :return: photo_list список словарей [ {'id': int, 'likes': int, 'vk_id': int, 'photo_name': str (photo12345_12345)}, ... ,  ]
         """
 
         photo_list = []
@@ -71,11 +71,20 @@ class VKclass(Auth):
         # pprint(response)
         for item in response['response']['items']:
             photo_dict = {'id': item['id'], 'likes': item['likes']['count'] + item['likes']['user_likes'],
-                          'photo_name': f"photo{item['owner_id']}_{item['id']}"}
+                          'vk_id': vk_id, 'photo_name': f"photo{item['owner_id']}_{item['id']}"}
             photo_list.append(photo_dict)
         return sorted(photo_list, key=lambda d: d['likes'])[:3]
 
     def search_users(self, dict_info, offset=0):
+        """
+                Функция ищет кандидатов удовлетворяющих заданным условиям
+
+        :param dict_info: словарь из users_info
+        :param offset:
+        :return: json файл [{'can_access_closed': bool, 'first_name': str, 'id': int,
+                         'is_closed': bool, 'last_name': str',
+                         'screen_name': str, 'track_code': long str}, ...,  ]
+        """
         if len(dict_info['birth_date']) != 10:
             age = 35
             # raise TypeError
@@ -94,7 +103,7 @@ class VKclass(Auth):
                   'age from': age - 5, 'age_to': age + 5, 'has_photo': 1,
                   'fields': ['photo', ' screen_name']
                   }
-        response = requests.get(f'{URL}users.search', params={**self.gr_params, **params}).json()
+        response = requests.get(f'{URL}users.search', params={**self.us_params, **params}).json()
         return response
 
 
@@ -109,6 +118,7 @@ if __name__ == '__main__':
     print(user.__repr__())
     result = user.users_info(os.getenv('M_VK_ID'))
     result1 = user.photos_get(result['vk_id'])
+    result2 = user.search_users(result)
     # print(user.users_info(os.getenv('N_VK_ID')))
     # pprint(user.search_users( result))
-    pprint(result1)
+    pprint(result2)

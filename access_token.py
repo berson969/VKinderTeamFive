@@ -52,7 +52,7 @@ def group_token_get(client_id, group_id):
     group_creator = AuthAccess(client_id, group_id)
     url_group = f'https://oauth.vk.com/authorize?client_id={client_id}&group_ids={group_id}' \
                 f'&redirect_uri=https://vk.com/club214815089&display=page' \
-                f'&scope=messages&response_type=token&v=5.131'
+                f'&scope=messages,photos&response_type=token&v=5.131'
     group_token_name = f'GROUP_TOKEN_{group_id}'
     return group_creator.get_token(url_group, PATTERN_GROUP, group_token_name)
 
