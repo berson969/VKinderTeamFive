@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 from pprint import pprint
 from bot_auth import Auth
 
-
 URL = 'https://api.vk.com/method/'
 
 
@@ -25,9 +24,9 @@ class VKclass(Auth):
 
         '''
                 Функция получает id пользователя ВК и возвращает данные по нему в виде словаря
-        :param vk_id: id user VK
-        :return: user_dict_info { 'vk_id': , 'first_name': , 'last_name': 'sex':
-                                 'city_id': , 'city': ,'birth_date':
+        :param vk_id: id  любого userа VK
+        :return: user_dict_info { 'vk_id': int, 'first_name': srt, 'last_name': str, 'sex': int
+                                 'city_id': int, 'city':  str ,'birth_date': str
                                  }
         '''
 
@@ -66,7 +65,7 @@ class VKclass(Auth):
         """
 
         photo_list = []
-        params = {'owner_id': vk_id, 'album_id': 'profile', 'extended': '1', 'photo_size': '1'}
+        params = {'owner_id': vk_id, 'album_id': 'profile', 'extended': '1'}
         response = requests.get(f'{URL}photos.get', params={**self.us_params, **params}).json()
         # pprint(response)
         for item in response['response']['items']:
@@ -75,17 +74,20 @@ class VKclass(Auth):
             photo_list.append(photo_dict)
         return sorted(photo_list, key=lambda d: d['likes'])[:3]
 
-    def search_users(self, dict_info, offset=0):
+    def search_users(self, user_id, offset=0):
         """
                 Функция ищет кандидатов удовлетворяющих заданным условиям
 
-        :param dict_info: словарь из users_info
+        :param user_id: int
         :param offset:
-        :return: json файл [{'can_access_closed': bool, 'first_name': str, 'id': int,
-                         'is_closed': bool, 'last_name': str',
-                         'screen_name': str, 'track_code': long str}, ...,  ]
+        :return: response файл {'response': {'count': int,
+                                'items': [{'can_access_closed': bool, 'first_name': str, 'id': int,
+                                         'is_closed': bool, 'last_name': str',
+                                         'screen_name': str, 'track_code': long str}, ...,  ]}}
+        :return json search_result [{'id': int, 'first_name': str, 'last_name': str}, ... ]
         """
-        if len(dict_info['birth_date']) != 10:
+        dict_info = self.users_info(user_id)
+        if len(dict_info['birth_date']) < 8:
             age = 35
             # raise TypeError
         else:
@@ -98,13 +100,16 @@ class VKclass(Auth):
             age += 5
         else:
             sex_opposite = 0
-        params = {'count': 10, 'offset': offset, 'city': dict_info['city_id'],
+        params = {'count': 1000, 'offset': offset, 'city': dict_info['city_id'],
                   'sex': sex_opposite, 'status': [1, 5, 6],
                   'age from': age - 5, 'age_to': age + 5, 'has_photo': 1,
+                  'is_closed': False,
                   'fields': ['photo', ' screen_name']
                   }
         response = requests.get(f'{URL}users.search', params={**self.us_params, **params}).json()
-        return response
+        search_result = [{'id': x['id'],'first_name': x['first_name'], 'last_name': x['last_name']} for x in response['response']['items'] if x['is_closed'] == False]
+        # pprint(search_result)
+        return search_result
 
 
 if __name__ == '__main__':
@@ -115,10 +120,10 @@ if __name__ == '__main__':
     #                       os.getenv('GROUP_ID2'))
     # access_user = os.getenv('USER_TOKEN_berson2005@yandex.ru')
     user = VKclass()
-    print(user.__repr__())
-    result = user.users_info(os.getenv('M_VK_ID'))
-    result1 = user.photos_get(result['vk_id'])
-    result2 = user.search_users(result)
+    # print(user.__repr__())
+    result = user.users_info(os.getenv('VK_ID'))
+    # result1 = user.photos_get(result['vk_id'])
+    result2 = user.search_users(os.getenv('VK_ID'))
     # print(user.users_info(os.getenv('N_VK_ID')))
     # pprint(user.search_users( result))
-    pprint(result2)
+    pprint(result)

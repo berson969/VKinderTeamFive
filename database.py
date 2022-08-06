@@ -25,7 +25,7 @@ class Photo(Base):
     __tablename__ = 'photos'
 
     id = Column(Integer, primary_key=True)
-    vk_id = Column(Integer, ForeignKey('persons.vk_id'), nullable=False)
+    vk_id = Column(Integer, ForeignKey('persons.vk_id', ondelete='CASCADE'), nullable=False)
     likes = Column(Integer)
     photo_name = Column(String)
     # person_photo = relationship(Person, backref='persons')
@@ -35,8 +35,8 @@ class WhiteList(Base):
     __tablename__ = 'whitelist'
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('persons.vk_id'), nullable=False)
-    select_id = Column(Integer, ForeignKey('persons.vk_id'), nullable=False)
+    user_id = Column(Integer, ForeignKey('persons.vk_id', ondelete='CASCADE'), nullable=False)
+    select_id = Column(Integer, ForeignKey('persons.vk_id', ondelete='CASCADE'), nullable=False)
     ForeignKeyConstraint(('user_id', 'select_id'), ['persons.vk_id', 'persons.vk_id'])
 
 
@@ -44,7 +44,7 @@ class BlackList(Base):
     __tablename__ = 'blacklist'
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('persons.vk_id'), nullable=False)
+    user_id = Column(Integer, ForeignKey('persons.vk_id', ondelete='CASCADE'), nullable=False)
     select_id = Column(Integer, nullable=False)
     # ForeignKeyConstraint(['user_id', 'select_id'], ['persons.vk_id', 'blacklist.select_id'])
     # blacklist = relationship(Person, backref='blacklist')
@@ -155,7 +155,7 @@ def add_whitelist(user_id, select_id):
     result = session.query(WhiteList).filter(WhiteList.select_id == select_id and WhiteList.user_id == user_id).first()
     if result is None:
         whitelist_person = WhiteList(user_id=user_id, select_id=select_id)
-        add_person_to_base(user.users_info(select_id), user.photos_get(select_id))
+        add_person_to_base(user.users_info(select_id),user.photos_get(select_id))
         session.add(whitelist_person)
         session.commit()
         return True
@@ -165,7 +165,7 @@ def add_whitelist(user_id, select_id):
 
 
 # выбирает всех фаворитов для выбранного юзера
-def choose_favorite(vk_id):
+def choose_favorites(vk_id):
     session = open_session()
     favorite = session.query(Person).join(WhiteList, (WhiteList.select_id == Person.vk_id)).filter(
         WhiteList.user_id == vk_id).all()
@@ -186,7 +186,7 @@ def check_blacklist(user_id, select_id):
 
 if __name__ == "__main__":
     # использовать только один раз для открытии базы, после строку закомментировать
-    # create_database()
+    create_database()
     user = VKclass()
     # print(user.photos_get(os.getenv('M_VK_ID')))
     # add_person_to_base(user.users_info(os.getenv('M_VK_ID')), user.photos_get(os.getenv('M_VK_ID')))
