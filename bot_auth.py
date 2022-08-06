@@ -45,6 +45,10 @@ class Auth:
         # получение id пользователя из файла настроек окружения .env в виде строки USER_ID="1234567890"
         self.default_user_id = os.getenv("VK_ID")
 
+        # получение авторизационных параметров для запросов в VK API
+        self.gr_params = {'access_token': self.gr_token, 'v': '5.131'}
+        self.us_params = {'access_token': self.us_token, 'v': '5.131'}
+
     def __repr__(self):
         return f'tokens: {self.gr_token}{self.us_token}, sessions:{self.vk_gr_session}{self.vk_us_session}'
 

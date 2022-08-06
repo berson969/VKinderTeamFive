@@ -1,6 +1,6 @@
 import os
 from pprint import pprint
-from users import VKclass
+from users import users_info, photos_get, search_users
 from database import add_whitelist, add_blacklist
 from bot_auth import Auth
 from vk_api.bot_longpoll import VkBotEventType, VkBotLongPoll
@@ -46,15 +46,15 @@ class DatingBot(Auth):
         super().__init__("DatingBot")
         self.event = None
         self.longpoll = VkBotLongPoll(self.vk_gr_session, group_id=GROUP_ID)
-        self.user = VKclass()
 
     def iteration(self, user_id: int):
         """
           Фунция назначения итератора, служит для запуска итерирования
         :param user_id: int
+        :param self._iter__next__()
         :return: None
         """
-        response = self.user.search_users(user_id)
+        response = search_users(user_id, self.gr_params, self.us_params)
         self._iter = SelectedIterator(response)
         self._iter.__iter__()
 
@@ -110,20 +110,29 @@ class DatingBot(Auth):
         return self.keyboard.get_keyboard()
 
     def show_selected(self, keyboard):
+        """
+                Функция формирует фото кандидата и отправляет сообщения в Bot
+        :param keyboard keyboad.get_keyboard()
+        :return: selected['id']: int
+        """
         selected, count = self._iter.__next__()
-        long_photo_name = ''
-        for photo_name in self.user.photos_get(selected['id']):
-            long_photo_name += photo_name['photo_name'] + ','
-        long_photo_name.rstrip(',')
-        params = {
-            'user_id': self.event.object['user_id'],
-            'message': f"{selected['first_name']} {selected['last_name']}\nhttps://vk.com/id{selected['id']}",
-            'attachment': long_photo_name,
-            'random_id': get_random_id(),
-            'keyboard': keyboard
-            }
-        self.write_msg(params)
-        return selected['id']
+        if selected is False:
+            # делаем сообщение что антекты закончились
+            pass
+        else:
+            long_photo_name = ''
+            for photo_name in photos_get(selected['id'], self.us_params):
+                long_photo_name += photo_name['photo_name'] + ','
+            # long_photo_name.rstrip(',')
+            params = {
+                'user_id': self.event.object['user_id'],
+                'message': f"{selected['first_name']} {selected['last_name']}\nhttps://vk.com/id{selected['id']}",
+                'attachment': long_photo_name,
+                'random_id': get_random_id(),
+                'keyboard': keyboard
+                }
+            self.write_msg(params)
+            return selected['id']
 
 
 
@@ -151,7 +160,7 @@ class DatingBot(Auth):
             if self.event.type == VkBotEventType.MESSAGE_NEW:
 
                 vk_id = self.event.message['from_id']
-                self.user_info = self.user.users_info(self.event.message['from_id'])
+                self.user_info = users_info(self.event.message['from_id'], self.gr_params)
                 params = {
                     'user_id': self.event.message['from_id'],
                     'message': f"Хай, {self.user_info['first_name']}",
@@ -181,31 +190,19 @@ class DatingBot(Auth):
                 # next users after whitelist
                 elif self.event.obj['payload']['text'] == "add_whitelist":
                     pprint(self.event.obj)
-                    res = add_whitelist(self.event.obj['user_id'], self.selected_id)
+                    res = add_whitelist(self.event.obj['user_id'], self.selected_id, self.gr_params, self.us_params)
                     print(res)
                     self.show_selected(self.make_keyboard1())
                 # next users after blacklist
                 elif self.event.obj['payload']['text'] == "add_blacklist":
-                    res = add_blacklist(self.event.obj['user_id'], self.selected['id'])
+                    res = add_blacklist(self.event.obj['user_id'], self.selected_id, self.gr_params, self.us_params)
                     print(res)
                     self.show_selected(self.make_keyboard1())
                 # review next users
                 elif self.event.obj['payload']['text'] == "next":
                     selected, count = self._iter.__next__()
-                    self.selected_id = selected['id']
-                    long_photo_name = ''
-                    for photo_name in self.user.photos_get(self.selected['id']):
-                        long_photo_name += photo_name['photo_name'] + ','
-                    long_photo_name.rstrip(',')
-                    # print(selected)
-                    params = {
-                        'user_id': self.event.object['user_id'],
-                        'message': f"{selected['first_name']} {selected['last_name']}\nhttps://vk.com/id{selected['id']}",
-                        'attachment': long_photo_name,
-                        'random_id': get_random_id(),
-                        'keyboard': self.make_keyboard1()
-                    }
-                    self.write_msg(params)
+                    self.show_selected(self.make_keyboard1())
+
                 # exit
                 elif self.event.obj['payload']['text'] == "buy buy":
                     params = {
