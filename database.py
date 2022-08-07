@@ -180,11 +180,17 @@ def choose_favorites(vk_id):
     :return: favorites
     """
     session = open_session()
-    favorites = session.query(Person).join(WhiteList, (WhiteList.select_id == Person.vk_id)).filter(
+    response = session.query(Person).join(WhiteList, (WhiteList.select_id == Person.vk_id)).filter(
         WhiteList.user_id == vk_id).all()
     session.close()
-    for person in favorites:
-        print(person)
+    favorites = []
+    for selected in response:
+        photo_list = session.query(Photo.photo_name).filter(Photo.vk_id == selected.vk_id).all()
+        long_photo_name = ''
+        for photo in photo_list:
+            long_photo_name += photo[0] +','
+        favorite = {'id': selected.vk_id, 'first_name': selected.first_name, 'last_name': selected.last_name, 'long_photo_name': long_photo_name}
+        favorites.append(favorite)
     return favorites
 
 
@@ -202,7 +208,7 @@ def check_blacklist(user_id, select_id):
 if __name__ == "__main__":
     load_dotenv()
     # использовать только один раз для открытии базы, после строку закомментировать
-    create_database()
+    # create_database()
     user = Auth()
     # print(photos_get(os.getenv('M_VK_ID')))
     result1 = add_person_to_base(users_info(os.getenv('M_VK_ID'), user.gr_params),
@@ -212,7 +218,9 @@ if __name__ == "__main__":
     result3 = add_blacklist(os.getenv('M_VK_ID'), os.getenv('N_VK_ID'), user.gr_params, user.us_params)
     # result4 = add_whitelist(os.getenv('VK_ID'), os.getenv('L_VK_ID'), user.gr_params, user.us_params)
     print(result3)
-    # # response = choose_favorite(os.getenv('VK_ID'))
-    # # for row in response:
+    fav = choose_favorites(os.getenv('VK_ID'))
+    print(fav)
+    # for row in response:
     #     print(row.vk_id, row.name)
     # print(check_blacklist(os.getenv('VK_ID'), os.getenv('LL_VK_ID')))
+

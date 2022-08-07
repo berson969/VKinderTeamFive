@@ -1,9 +1,10 @@
 import datetime
+import os
+from pprint import pprint
 from dateutil.parser import parse
 import requests
-import os
 from dotenv import load_dotenv
-from pprint import pprint
+
 from bot_auth import Auth
 
 URL = 'https://api.vk.com/method/'
@@ -24,7 +25,7 @@ def users_info(vk_id: int, gr_params):
 
     params = {'user_ids': vk_id, 'fields': 'bdate, sex, city'}
     response = requests.get(f'{URL}users.get', params={**gr_params, **params}).json()
-    print(response)
+    # print(response)
     if not response['response']:
         return False
     elif 'deactivated' in response['response'][0].keys():

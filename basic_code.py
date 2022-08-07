@@ -255,8 +255,13 @@ class DatingBot(Auth):
                                                         color=VkKeyboardColor.SECONDARY,
                                                         payload={'text': 'exit'})
                     self.write_msg(self.vk_id, 'ВЫБРАННЫЕ АНКЕТЫ', keyboard_chosen.get_keyboard())
-                    res = choose_favorites(self.vk_id)  # , self.gr_params, self.us_params)
-                    print(res)
+                    for selected in choose_favorites(self.vk_id):
+                        keyboard_select = VkKeyboard(inline=True)
+                        keyboard_select.add_openlink_button(label=f"https://vk.com/id{selected['id']}",
+                                                            link=f"https://vk.com/id{selected['id']}")
+                        self.write_msg(self.vk_id, f"{selected['first_name']}"
+                                                   f" {selected['last_name']}", keyboard_select.get_keyboard(),
+                                       selected['long_photo_name'])
 
 
 if __name__ == '__main__':
