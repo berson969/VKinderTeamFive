@@ -6,7 +6,6 @@ from sqlalchemy.orm import declarative_base, relationship, sessionmaker, mapper
 from bot_auth import Auth
 from users import users_info, photos_get
 
-load_dotenv()
 Base = declarative_base()
 
 
@@ -193,6 +192,7 @@ def check_blacklist(user_id, select_id):
 
 
 if __name__ == "__main__":
+    load_dotenv()
     # использовать только один раз для открытии базы, после строку закомментировать
     create_database()
     user = Auth()

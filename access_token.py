@@ -53,7 +53,7 @@ def group_token_get(client_id, group_id):
     url_group = f'https://oauth.vk.com/authorize?client_id={client_id}&group_ids={group_id}' \
                 f'&redirect_uri=https://vk.com/club214815089&display=page' \
                 f'&scope=messages,photos,stories,manage,docs&response_type=token&v=5.131'
-    group_token_name = f'GROUP_TOKEN_{group_id}'
+    group_token_name = f'GROUP_TOKEN'
     return group_creator.get_token(url_group, PATTERN_GROUP, group_token_name)
 
 
@@ -65,7 +65,7 @@ def user_token_get(client_id):
     url_user = f'https://oauth.vk.com/authorize?client_id={client_id}&redirect_uri=' \
                f'https://vk.com/club214815089&display=page&scope=friends,groups' \
                f'&response_type=token&v=5.131&state=347650&revoke=1'
-    user_token = f'USER_TOKEN_{LOGIN}'
+    user_token = f'USER_TOKEN'
     return user_creator.get_token(url_user, PATTERN_USER, user_token)
 
 

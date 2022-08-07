@@ -13,9 +13,9 @@ def users_info(vk_id: int, gr_params):
     """
             Функция получает id пользователя ВК и возвращает данные по нему в виде словаря
 
-    :param vk_id: id  любого userа VK
-
-    :type gr_params параметр аутенфикации
+    :param vk_id
+    :type int
+    :param gr_params параметр аутенфикации
 
     :return: user_dict_info { 'vk_id': int, 'first_name': srt, 'last_name': str, 'sex': int
                              'city_id': int, 'city':  str ,'birth_date': str
@@ -71,7 +71,7 @@ def photos_get(vk_id: int, us_params):
     return sorted(photo_list, key=lambda d: d['likes'])[:3]
 
 
-def search_users(user_id: int, gr_params: str , us_params: str, offset=0):
+def search_users(user_id: int, gr_params: str, us_params: str, offset=0):
     """
             Функция ищет кандидатов удовлетворяющих заданным условиям
 
@@ -104,9 +104,9 @@ def search_users(user_id: int, gr_params: str , us_params: str, offset=0):
               'fields': ['photo', ' screen_name']
               }
     response = requests.get(f'{URL}users.search', params={**us_params, **params}).json()
+    pprint(response)
     search_result = [{'id': x['id'], 'first_name': x['first_name'], 'last_name': x['last_name']} for x in
                      response['response']['items'] if x['is_closed'] == False]
-    # pprint(search_result)
     return search_result
 
 
@@ -121,6 +121,6 @@ if __name__ == '__main__':
     # print(user.__repr__())
     result = users_info(os.getenv('VK_ID'), user.gr_params)
     result1 = photos_get(result['vk_id'], user.us_params)
-    result2 = search_users(os.getenv('VK_ID'), user.us_params, user.gr_params)
+    result2 = search_users(os.getenv('VK_ID'), user.gr_params, user.us_params)
     # print(users_info(os.getenv('N_VK_ID')), user.gr_params)
     pprint(result)

@@ -11,25 +11,32 @@ import os  # работа с файловой системой
 class Auth:
     """
    Аутенфикационный класс  ВКонтакте
+
     """
 
-    # id пользователя ВКонтакте (например, 1234567890) в виде строки
-    # можно использовать, если диалог будет вестись только с конкретным человеком
-    default_user_id = None
 
     def __init__(self, version='5.131'):
         """
         Инициализация бота при помощи получения доступа к API ВКонтакте
-        """
 
+        :param vk_us_session
+        :param vk_gr_session
+
+        :param vk_api_us_access
+        :param vk_api_gr_access
+
+        :var user_id
+        :var group_id
+        """
+        load_dotenv()
         # self.version = version
 
-        self.vk_us_session = None
-        self.vk_gr_session = None
+        # self.vk_us_session = None
+        # self.vk_gr_session = None
 
         self.gr_authorized = False
         self.us_authorized = False
-        load_dotenv()
+
 
         # авторизация
         self.vk_api_gr_access = self.do_group_auth()
@@ -43,14 +50,16 @@ class Auth:
             self.us_authorized = True
 
         # получение id пользователя из файла настроек окружения .env в виде строки USER_ID="1234567890"
-        self.default_user_id = os.getenv("VK_ID")
+
+        self.us_id = os.getenv("VK_ID")
+        self.group_id = os.getenv("GROUP_ID")
 
         # получение авторизационных параметров для запросов в VK API
         self.gr_params = {'access_token': self.gr_token, 'v': '5.131'}
         self.us_params = {'access_token': self.us_token, 'v': '5.131'}
 
     def __repr__(self):
-        return f'tokens: {self.gr_token}{self.us_token}, sessions:{self.vk_gr_session}{self.vk_us_session}'
+        return f'group: {self.group_id}, user {self.us_id}tokens: {self.gr_token}{self.us_token}, sessions:{self.vk_gr_session}{self.vk_us_session}'
 
     def do_group_auth(self):
         """
@@ -58,7 +67,7 @@ class Auth:
         Использует переменную, хранящуюся в файле настроек окружения .env в виде строки ACCESS_TOKEN="1q2w3e4r5t6y7u8i9o..."
         :return: возможность работать с API от имени группы или приложения
         """
-        self.gr_token = os.getenv("GROUP_TOKEN_214815089")
+        self.gr_token = os.getenv("GROUP_TOKEN")
         try:
             self.vk_gr_session = vk_api.VkApi(token=self.gr_token)
             return self.vk_gr_session.get_api()
@@ -72,7 +81,7 @@ class Auth:
         Использует переменную, хранящуюся в файле настроек окружения .env в виде строки ACCESS_TOKEN="1q2w3e4r5t6y7u8i9o..."
         :return: возможность работать с API
         """
-        self.us_token = os.getenv("USER_TOKEN_berson2005@yandex.ru")
+        self.us_token = os.getenv("USER_TOKEN")
         try:
             self.vk_us_session = vk_api.VkApi(token=self.us_token)
             return self.vk_us_session.get_api()
@@ -96,10 +105,10 @@ class Auth:
 
         # если не указан ID - берём значение по умолчанию, если таковое указано в .env-файле
         if receiver_user_id is None:
-            receiver_user_id = self.default_user_id
+            receiver_user_id = self.us_id
 
         try:
-            self.vk_api_access.messages.send(user_id=receiver_user_id, message=message_text, random_id=get_random_id())
+            self.vk_api_us_access.messages.send(user_id=receiver_user_id, message=message_text, random_id=get_random_id())
             print(f"Сообщение отправлено для ID {receiver_user_id} с текстом: {message_text}")
         except Exception as error:
             print(error)

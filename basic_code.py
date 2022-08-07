@@ -1,16 +1,13 @@
 import os
+import time
 from pprint import pprint
 from users import users_info, photos_get, search_users
 from database import add_whitelist, add_blacklist
 from bot_auth import Auth
 from vk_api.bot_longpoll import VkBotEventType, VkBotLongPoll
 from vk_api.utils import get_random_id
-from dotenv import load_dotenv
 from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 import json
-
-load_dotenv()
-GROUP_ID = os.getenv('GROUP_ID2')
 
 
 class SelectedIterator():
@@ -19,6 +16,7 @@ class SelectedIterator():
        выдает по одному пользователя за раз
        __next__ возвращает словарь вида {'id': int, 'first_name': str, 'last_name': str}
     """
+
     def __init__(self, search_list):
         try:
             self.response = search_list
@@ -43,13 +41,15 @@ class DatingBot(Auth):
     """
 
     def __init__(self):
-        super().__init__("DatingBot")
+
+        super().__init__(Auth)
+        self.user_id = None
         self.event = None
-        self.longpoll = VkBotLongPoll(self.vk_gr_session, group_id=GROUP_ID)
+        self.longpoll = VkBotLongPoll(self.vk_gr_session, group_id=self.group_id)
 
     def iteration(self, user_id: int):
         """
-          Фунция назначения итератора, служит для запуска итерирования
+          Метод назначения итератора, служит для запуска итерирования
         :param user_id: int
         :param self._iter__next__()
         :return: None
@@ -58,62 +58,63 @@ class DatingBot(Auth):
         self._iter = SelectedIterator(response)
         self._iter.__iter__()
 
-    def make_keyboard0(self):  # start keyboard
-        self.settings = dict(one_time=True, inline=False)
-        self.keyboard = VkKeyboard(**self.settings)
-        payload = {'text': 'search', 'type': 'text'}
-        self.keyboard.add_callback_button(label='Ок, давай попробуем!', color=VkKeyboardColor.POSITIVE, payload=payload)
-        self.keyboard.add_line()
-        payload = {'text': 'go_back', 'type': 'text'}
-        self.keyboard.add_callback_button(label='Нет, спасибо...', color=VkKeyboardColor.SECONDARY, payload=payload)
-        return self.keyboard.get_keyboard()
-
-    def make_keyboard1(self):  # keyboard under messages
-        self.settings = dict(one_time=False, inline=True)
-        self.keyboard = VkKeyboard(**self.settings)
-        payload = {"type": "text", "text": "add_whitelist"}
-        self.keyboard.add_callback_button(label='Нравится', color=VkKeyboardColor.POSITIVE, payload=payload)
-        payload = {"type": "text", "text": "add_blacklist"}
-        self.keyboard.add_callback_button(label='Не нравится', color=VkKeyboardColor.NEGATIVE, payload=payload)
-        payload = {"type": "text", "text": "next"}
-        self.keyboard.add_callback_button(label='Следующие', color=VkKeyboardColor.PRIMARY, payload=payload)
-        return self.keyboard.get_keyboard()
-
-    def make_keyboard2(self):  # start review users
-        self.settings = dict(one_time=False, inline=False)
-        self.keyboard = VkKeyboard(**self.settings)
-        payload = {"type": "text", "text": "next"}
-        self.keyboard.add_callback_button(label='Начать показ', color=VkKeyboardColor.POSITIVE, payload=payload)
-        self.keyboard.add_line()
-        payload = {"type": "text", "text": "buy buy"}
-        self.keyboard.add_callback_button(label='Нет, в другой раз', color=VkKeyboardColor.SECONDARY, payload=payload)
-        return self.keyboard.get_keyboard()
-
-    def make_keyboard3(self):  # next menu
-        self.settings = dict(one_time=False, inline=False)
-        self.keyboard = VkKeyboard(**self.settings)
-        payload = {"type": "text", "text": "next"}
-        self.keyboard.add_callback_button(label='Показать следующие', color=VkKeyboardColor.POSITIVE, payload=payload)
-        self.keyboard.add_line()
-        payload = {"type": "text", "text": "choose_favorites"}
-        self.keyboard.add_callback_button(label='Показать результат', color=VkKeyboardColor.PRIMARY, payload=payload)
-        self.keyboard.add_line()
-        payload = {"type": "snow_snackbar", "text": "До новых встреч!!"}  # "{\"text\": \"buy-buy\"}"
-        self.keyboard.add_callback_button(label='Выйти', color=VkKeyboardColor.SECONDARY, payload=payload)
-        return self.keyboard.get_keyboard()
-
-    def make_keyboard4(self):  # exit
-        self.settings = dict(one_time=False, inline=False)
-        self.keyboard = VkKeyboard(**self.settings)
-        payload = {"type": "show_snackbar", 'text': "До новых встреч"}
-        self.keyboard.add_callback_button(label='До новых встреч!!', color=VkKeyboardColor.POSITIVE, payload=payload)
-        return self.keyboard.get_keyboard()
-
-    def show_selected(self, keyboard):
+    def write_msg(self, user_id: int, message=None, keyboard=None, attachment=None):
         """
-                Функция формирует фото кандидата и отправляет сообщения в Bot
-        :param keyboard keyboad.get_keyboard()
-        :return: selected['id']: int
+            Отправляет сообщения в бот VK
+            :param user_id
+            :type int
+            :param message
+            :type str
+            :param attachment
+            :type str
+            :param keyboard
+            :type json
+
+            :return:  {'client_info': {'button_actions': ['text', ... , ...],
+                     'carousel': True, 'inline_keyboard': True, 'keyboard': True, 'lang_id': 0},
+                     'message': {'attachments': [], 'conversation_message_id': 460,
+                     'date': 1659721395, 'from_id': 204323306,
+                     'fwd_messages': [], 'id': 497,
+                     'important': False, 'is_hidden': False, 'out': 0,
+                      'peer_id': 204323306, 'random_id': 0, 'text': 'dsvgdf'}}
+
+        """
+        params = {'user_id': user_id,
+                  'message': message,
+                  'attachment': attachment,
+                  'random_id': get_random_id(),
+                  'keyboard': keyboard
+                  }
+        self.vk_gr_session.method('messages.send', params)
+
+    def edit_msg(self, peer_id: int, conversation_message_id: int, message=None, keyboard=None, attachment=None):
+        """
+            Редактирует сообщения и клавиатуры в боте VK
+            :param peer_id
+            :type int
+            :param message
+            :type str
+            :param conversation_message_id
+            :type int
+            :param attachment
+            :type str
+            :param keyboard
+            :type: json
+        """
+        # params = {'peer_id': peer_id,
+        #           'message': message,
+        #           'conversation_message_id': conversation_message_id,
+        #           'attachment': attachment,
+        #           'keyboard': keyboard
+        #           }
+        self.vk_api_gr_access.messages.edit(peer_id=peer_id, message=message, conversation_message_id=conversation_message_id, attachment=attachment, keyboard=keyboard)
+
+    def show_selected(self, user_id):
+        """
+                Метод формирует фото кандидата и отправляет сообщения в Bot
+
+        :return: selected['id']
+        :type int
         """
         selected, count = self._iter.__next__()
         if selected is False:
@@ -123,18 +124,29 @@ class DatingBot(Auth):
             long_photo_name = ''
             for photo_name in photos_get(selected['id'], self.us_params):
                 long_photo_name += photo_name['photo_name'] + ','
-            # long_photo_name.rstrip(',')
-            params = {
-                'user_id': self.event.object['user_id'],
-                'message': f"{selected['first_name']} {selected['last_name']}\nhttps://vk.com/id{selected['id']}",
-                'attachment': long_photo_name,
-                'random_id': get_random_id(),
-                'keyboard': keyboard
-                }
-            self.write_msg(params)
+            message = f"{selected['first_name']} {selected['last_name']}\nhttps://vk.com/id{selected['id']}"
+            attachment = long_photo_name
+            keyboard = VkKeyboard(one_time=False, inline=True)
+            keyboard.add_callback_button(label='Нравится', color=VkKeyboardColor.POSITIVE,
+                                         payload={"text": "add_whitelist"})
+            keyboard.add_callback_button(label='Не нравится', color=VkKeyboardColor.NEGATIVE,
+                                         payload={"text": "add_blacklist"})
+            keyboard.add_callback_button(label='Следующие', color=VkKeyboardColor.PRIMARY,
+                                         payload={"text": "next"})
+            keyboard = keyboard.get_keyboard()
+            self.write_msg(user_id, message, keyboard, attachment)
+            res = self.event.obj
+            peer_id = self.event.obj['peer_id']
+            conversation_message_id = self.conversation_message_id
+            keyboard = VkKeyboard(one_time=False, inline=True)
+            keyboard.add_callback_button(label='Нравится', color=VkKeyboardColor.POSITIVE,
+                                         payload={"text": "add_whitelist"})
+            keyboard.add_callback_button(label='Не нравится', color=VkKeyboardColor.NEGATIVE,
+                                         payload={"text": "add_blacklist"})
+            keyboard.add_callback_button(label='Следующие', color=VkKeyboardColor.PRIMARY, payload={"text": "next"})
+            keyboard = keyboard.get_keyboard()
+            self.edit_msg(peer_id, conversation_message_id, message, keyboard, attachment)
             return selected['id']
-
-
 
     def messagerBot(self):
         """
@@ -153,102 +165,62 @@ class DatingBot(Auth):
              'peer_id': 204323306, 'random_id': 0, 'text': 'dsvgdf'}}
 
         """
-
         for self.event in self.longpoll.listen():
 
+            if self.event.type == VkBotEventType.MESSAGE_NEW and self.event.obj.message['text']:
+                # Запрос 1
+                user_dict_info = users_info(self.event.message['from_id'], self.gr_params)
+                keyboard_start = VkKeyboard(one_time=True, inline=False)
+                keyboard_start.add_callback_button(label='Начать', color=VkKeyboardColor.POSITIVE,
+                                                   payload={'text': 'search'})
+                self.conversation_message_id = self.event.obj.message['conversation_message_id']
+                self.user_id = self.event.message['from_id']
+                message = f"Хай, {user_dict_info['first_name']}! Хочешь познакомиться?"
+                keyboard = keyboard_start.get_keyboard()
+                self.write_msg(self.user_id, message, keyboard)
+                pprint(self.event.obj)
+                peer_id = self.event.obj.message['peer_id']
+                message = 'Начнем!'
+                keyboard_show_selected = VkKeyboard(one_time=True, inline=False)
+                keyboard_show_selected.add_callback_button(label='Следующие', color=VkKeyboardColor.PRIMARY,
+                                                           payload={'text': 'next'})
+                keyboard_show_selected.add_line()
+                keyboard_show_selected.add_callback_button(label='Показать выбранные', color=VkKeyboardColor.POSITIVE,
+                                                           payload={'text': 'next'})
+                keyboard_show_selected.add_callback_button(label='Закончить', color=VkKeyboardColor.SECONDARY,
+                                                           payload={'text': 'next'})
+                keyboard = keyboard_show_selected.get_keyboard()
+                self.edit_msg(peer_id, self.conversation_message_id, message, keyboard)
 
-            if self.event.type == VkBotEventType.MESSAGE_NEW:
-
-                vk_id = self.event.message['from_id']
-                self.user_info = users_info(self.event.message['from_id'], self.gr_params)
-                params = {
-                    'user_id': self.event.message['from_id'],
-                    'message': f"Хай, {self.user_info['first_name']}",
-                    'random_id': get_random_id()
-                }
-                self.write_msg(params)
-                keyboard = self.make_keyboard0()
-                params = {'user_id': self.event.message['from_id'], 'message': 'Хочешь познакомиться?',
-                          'random_id': get_random_id(), 'keyboard': keyboard}
-                self.write_msg(params)
 
             elif self.event.type == VkBotEventType.MESSAGE_EVENT:
- # asking about searching
-                #             pprint(self.event.obj)
+                # Запрос 2
                 if self.event.obj.payload['text'] == "search":
-                    # pprint(self.event.obj)
-         # iterator start
-                    self.iteration(self.event.obj['user_id'])
-                    params = {
-                        'user_id': self.event.object['user_id'],
-                        'message': f"Внимание! Найдены подходящие анкеты",
-                        'random_id': get_random_id(),
-                        'keyboard': self.make_keyboard2()
-                    }
-                    self.write_msg(params)
-                    self.selected_id = self.show_selected(self.make_keyboard1())
-                # next users after whitelist
-                elif self.event.obj['payload']['text'] == "add_whitelist":
+                    self.iteration(self.user_id)
+                    self.selected_id = self.show_selected(self.user_id)
                     pprint(self.event.obj)
-                    res = add_whitelist(self.event.obj['user_id'], self.selected_id, self.gr_params, self.us_params)
+                # Запрос 3
+                elif self.event.obj.payload['text'] == "add_whitelist":
+                    res = add_whitelist(self.event.obj.user_id, self.selected_id, self.gr_params, self.us_params)
                     print(res)
-                    self.show_selected(self.make_keyboard1())
-                # next users after blacklist
-                elif self.event.obj['payload']['text'] == "add_blacklist":
-                    res = add_blacklist(self.event.obj['user_id'], self.selected_id, self.gr_params, self.us_params)
+                    self.selected_id = self.show_selected(self.user_id)
+                    # print()
+                # Запрос 4
+                elif self.event.obj.payload['text'] == "add_blacklist":
+                    res = add_blacklist(self.event.obj.user_id, self.selected_id, self.gr_params, self.us_params)
                     print(res)
-                    self.show_selected(self.make_keyboard1())
-                # review next users
-                elif self.event.obj['payload']['text'] == "next":
-                    selected, count = self._iter.__next__()
-                    self.show_selected(self.make_keyboard1())
-
-                # exit
-                elif self.event.obj['payload']['text'] == "buy buy":
-                    params = {
-                        'user_id': self.event.object['user_id'],
-                        'message': f"До новых встреч",
-                        'random_id': get_random_id(),
-                        'keyboard': self.make_keyboard4()
-                    }
-                    self.write_msg(params)
-                    return
-
-    def write_msg(self, params):
-        """
-          Отправляет сообщения в бот VK
-        :param params: {
-                        'user_id': int,
-                        'message': str",
-                        'attachment': str,
-                        'random_id': get_random_id(),
-                        'keyboard': self.make_keyboard()
-                    }
-        :return:  {'client_info': {'button_actions': ['text', ... , ...],
-                 'carousel': True, 'inline_keyboard': True, 'keyboard': True, 'lang_id': 0},
- 'message': {'attachments': [], 'conversation_message_id': 460,
-             'date': 1659721395, 'from_id': 204323306,
-             'fwd_messages': [], 'id': 497,
-             'important': False, 'is_hidden': False, 'out': 0,
-             'peer_id': 204323306, 'random_id': 0, 'text': 'dsvgdf'}}
-        """
-        self.vk_gr_session.method('messages.send', params)
-
-    def edit_msg(self, params):
-        """
-        Редактирует сообщения и клавиатуры в боте VK
-        :param params: {
-                        'peer_id': int,
-                        'message': str",
-                        'conversation_message_id': str,
-                        'attachment': str,
-                        'keyboard': self.make_keyboard()
-                        }
-        :return:
-        """
-        self.vk_gr_session.method('messages.edit', params)
-
-
+                    self.selected_id = self.show_selected(self.user_id)
+                    # pprint()
+                # запрос 5
+                elif self.event.obj.payload['text'] == "next":
+                    selected_id = self.show_selected(self.user_id)
+                # Запрос на выход
+                elif self.event.obj.payload['text'] == "Good buy":
+                    message = 'До новых встреч!!'
+                    keyboard = VkKeyboard(one_time=True, inline=False)
+                    keyboard.add_button(label='', color=VkKeyboardColor.POSITIVE,
+                                        payload={'button': []})
+                    self.write_msg(self.user_id, message, keyboard.get_keyboard())
 
 
 if __name__ == '__main__':
