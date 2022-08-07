@@ -68,7 +68,7 @@ def open_session():
 
 def create_database():
     """
-        Oткрывает поновой таблицы базы данных. Для последующего применения отключить вызов этой функции
+        Oткрывает по новой таблицы базы данных. Для последующего применения отключить вызов этой функции
     """
     session = open_session()
     # meta = MetaData(session.bind)
@@ -173,11 +173,19 @@ def add_blacklist(user_id: int, select_id: int, gr_params: str, us_params: str):
 
 # выбирает всех фаворитов для выбранного юзера
 def choose_favorites(vk_id):
+    """
+    Функция выводит всех понравившихся кандидатов
+
+    :param vk_id:
+    :return: favorites
+    """
     session = open_session()
-    favorite = session.query(Person).join(WhiteList, (WhiteList.select_id == Person.vk_id)).filter(
+    favorites = session.query(Person).join(WhiteList, (WhiteList.select_id == Person.vk_id)).filter(
         WhiteList.user_id == vk_id).all()
     session.close()
-    return favorite
+    for person in favorites:
+        print(person)
+    return favorites
 
 
 # проверяет есть ли выбранная личность в черном списке
