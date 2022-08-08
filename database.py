@@ -4,7 +4,7 @@ import sqlalchemy as sq
 from sqlalchemy import Column, Integer, String, ForeignKey, create_engine, ForeignKeyConstraint, MetaData
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker, mapper
 from bot_auth import Auth
-from users import users_info, photos_get
+from users import users_info
 
 Base = declarative_base()
 
@@ -19,16 +19,7 @@ class Person(Base):
     birth_date = Column(String, nullable=False)
     city_id = Column(Integer, nullable=True)
     city = Column(String, nullable=True)
-
-
-class Photo(Base):
-    __tablename__ = 'photos'
-
-    id = Column(Integer, primary_key=True)
-    vk_id = Column(Integer, ForeignKey('persons.vk_id', ondelete='CASCADE'), nullable=False)
-    likes = Column(Integer)
-    photo_name = Column(String)
-    # person_photo = relationship(Person, backref='persons')
+    photos = Column(String, nullable=True)
 
 
 class WhiteList(Base):
@@ -46,16 +37,15 @@ class BlackList(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('persons.vk_id', ondelete='CASCADE'), nullable=False)
     select_id = Column(Integer, nullable=False)
-    # ForeignKeyConstraint(['user_id', 'select_id'], ['persons.vk_id', 'blacklist.select_id'])
-    # blacklist = relationship(Person, backref='blacklist')
-    # person_blacklist = relationship(Person, backref='persons')
 
 
 def open_session():
     """
         Открывает сессию postgres
             необходимо настроить доступ к серверу postgres со своей учетной записью  postgres
-    :return: session
+
+    :return:  object session
+
     """
     driver = 'postgresql+psycopg2'
     path_db = 'localhost:5432'
@@ -71,21 +61,16 @@ def create_database():
         Oткрывает по новой таблицы базы данных. Для последующего применения отключить вызов этой функции
     """
     session = open_session()
-    # meta = MetaData(session.bind)
-    # for table in reversed(mBase.metadata.sorted_tables):
-    #     meta.Session.execute(table.delete())
-    # meta.Session.commit()
-    # session.execute(persons.delete())
     Base.metadata.drop_all(session.bind)
     Base.metadata.create_all(session.bind)
     session.close()
 
 
-def add_person_to_base(dict_info, photo_list):
+def add_person_to_base(dict_info: dict):
     """
             Добавляет нового пользователя в таблицу Persons
     :param dict_info: dict
-    :param photo_list: json
+
     :return: True при удачном коммите, False при неудачном
     """
     if isinstance(dict_info, dict):
@@ -94,133 +79,93 @@ def add_person_to_base(dict_info, photo_list):
             new_person = Person(**dict_info)
             session.add(new_person)
             session.commit()
-            add_photos(photo_list)
             return True
         except sq.exc.IntegrityError:
             session.close()
     return False
 
 
-def add_photos(photo_list: list):
-    """
-            Добавляет в таблицу Photos  3 фото выбранного пользователя
-
-        :param   enter date "[{'id': int, 'likes': int, 'vk_id': int," 'photo_name': str (photo12345_12345)}, ... ,  ] )
-        :return: True при удачном коммите, False при неудачном
-    """
-    if isinstance(photo_list, list):
-        session = open_session()
-        try:
-            for photo_dict in photo_list:
-                new_photo = Photo(**photo_dict)
-                session.add(new_photo)
-            session.commit()
-            return True
-        except sq.exc.IntegrityError:
-            session.close()
-    return False
-
-
-def add_whitelist(user_id, select_id, gr_params, us_params):
+def add_whitelist(user_dict_info: dict, select_dict_info: dict):
     """
             Добавляет пару id пользователя и выбранного им кандидата в базу данных в таблицу  Whitelist,
             если какого то id нет в таблице Persons записывает их в нее
 
-    :param user_id: int
-    :param select_id: int
-    :type gr_params: dict
-    :type us_params: dict параметры аутенфикации
+    :param user_dict_info: dict
+    :param select_dict_info: dict
+
     :return: True при удачном коммите, False при неудачном
     """
     session = open_session()
-    if session.query(Person).filter(Person.vk_id == user_id).first() is None:
-        add_person_to_base(users_info(user_id, gr_params), photos_get(user_id, us_params))
-    result = session.query(WhiteList).filter(WhiteList.select_id == select_id and WhiteList.user_id == user_id).first()
+    add_person_to_base(user_dict_info)
+    add_person_to_base(select_dict_info)
+    result = session.query(WhiteList).filter(
+        WhiteList.select_id == select_dict_info['vk_id'] and WhiteList.user_id == user_dict_info['vk_id']).first()
     if result is None:
-        whitelist_person = WhiteList(user_id=user_id, select_id=select_id)
-        add_person_to_base(users_info(select_id, gr_params), photos_get(select_id, us_params))
+        whitelist_person = WhiteList(user_id=user_dict_info['vk_id'], select_id=select_dict_info['vk_id'])
         session.add(whitelist_person)
         session.commit()
         return True
-    else:
-        session.close()
-        return False
+    session.close()
+    return False
 
 
-def add_blacklist(user_id: int, select_id: int, gr_params: str, us_params: str):
+def add_blacklist(user_dict_info: dict, select_id: int):
     """
-            Добавляет пару id пользователя и выбранного им кандидата в базу данных в таблицу  Blacklist,
+        Добавляет пару id пользователя и выбранного им кандидата в базу данных в таблицу  Blacklist,
             в таблицу Persons пишет пользователя и не пишет кандидата
 
-    :param user_id: int пользователь бота
-    :param select_id: int выбранный пользователь ВК
+        :param user_dict_info: dict пользователь бота
+        :param select_id: int выбранный пользователь ВК
 
-    :type gr_params: dict
-    :type us_params: dict параметры аутенфикации
-
-    :return: True при удачном коммите, False при неудачном
+        :return: True при удачном коммите, False при неудачном
     """
-    if check_blacklist(user_id, select_id) is True:
-        session = open_session()
-        add_person_to_base(users_info(user_id, gr_params), photos_get(user_id, us_params))
-        blacklist_person = BlackList(user_id=user_id, select_id=select_id)
+    session = open_session()
+    res = session.query(BlackList).filter(BlackList.select_id == select_id and BlackList.user_id == user_dict_info['vk_id']).first()
+    if res is None:
+        add_person_to_base(user_dict_info)
+        blacklist_person = BlackList(user_id=user_dict_info['vk_id'], select_id=select_id)
         session.add(blacklist_person)
         session.commit()
         return True
-    else:
-        return False
-
-
-# выбирает всех фаворитов для выбранного юзера
-def choose_favorites(vk_id):
-    """
-    Функция выводит всех понравившихся кандидатов
-
-    :param vk_id:
-    :return: favorites
-    """
-    session = open_session()
-    response = session.query(Person).join(WhiteList, (WhiteList.select_id == Person.vk_id)).filter(
-        WhiteList.user_id == vk_id).all()
     session.close()
-    favorites = []
-    for selected in response:
-        photo_list = session.query(Photo.photo_name).filter(Photo.vk_id == selected.vk_id).all()
-        long_photo_name = ''
-        for photo in photo_list:
-            long_photo_name += photo[0] +','
-        favorite = {'id': selected.vk_id, 'first_name': selected.first_name, 'last_name': selected.last_name, 'long_photo_name': long_photo_name}
-        favorites.append(favorite)
-    return favorites
+    return False
 
 
-# проверяет есть ли выбранная личность в черном списке
-def check_blacklist(user_id, select_id):
+def choose_favorites(vk_id: int, favorites=[]):
+    """
+        Функция выводит всех понравившихся кандидатов
+
+        :param vk_id:
+        :return: favorites: json [{'vk_id': int, 'first_name': str, 'last_name': str, 'photo': str}, ...]
+    """
     session = open_session()
-    result = session.query(BlackList).filter(BlackList.select_id == select_id and BlackList.user_id == user_id).first()
-    if result is None:
-        return True
-    else:
-        session.close()
-        return False
+    res = session.query(Person).join(WhiteList, (WhiteList.select_id == Person.vk_id)).filter(WhiteList.user_id == vk_id).all()
+    for fav in res:
+        favorites.append({'vk_id': fav.vk_id, 'first_name': fav.first_name, 'last_name': fav.last_name, 'photos': fav.photos})
+    session.close()
+    return favorites
 
 
 if __name__ == "__main__":
     load_dotenv()
-    # использовать только один раз для открытии базы, после строку закомментировать
     # create_database()
     user = Auth()
-    # print(photos_get(os.getenv('M_VK_ID')))
-    result1 = add_person_to_base(users_info(os.getenv('M_VK_ID'), user.gr_params),
-                                 photos_get(os.getenv('M_VK_ID'), user.us_params))
+    vk_id = os.getenv('M_VK_ID')
+    n_vk_id = os.getenv('N_VK_ID')
+    my_vk_id = os.getenv('VK_ID')
+    my_dict_info = users_info( my_vk_id, user.gr_params, user.us_params)
+    l_dict_info = users_info(os.getenv('L_VK_ID'), user.gr_params, user.us_params)
+    # использовать только один раз для открытии базы, после строку закомментировать
 
-    result2 = photos_get(os.getenv('VK_ID'), user.us_params)
-    result3 = add_blacklist(os.getenv('M_VK_ID'), os.getenv('N_VK_ID'), user.gr_params, user.us_params)
-    # result4 = add_whitelist(os.getenv('VK_ID'), os.getenv('L_VK_ID'), user.gr_params, user.us_params)
-    print(result3)
-    fav = choose_favorites(os.getenv('VK_ID'))
-    print(fav)
-    # for row in response:
+    # print(photos_get(os.getenv('M_VK_ID')))
+    result1 = add_person_to_base(users_info(vk_id, user.gr_params, user.us_params))
+
+    result3 = add_blacklist(users_info(vk_id, user.gr_params, user.us_params), n_vk_id)
+
+    result4 = add_whitelist(my_dict_info, l_dict_info )
+    print(result4)
+    fav1 = choose_favorites(my_vk_id)
+    print(fav1)
+    # for row in fav:
     #     print(row.vk_id, row.name)
     # print(check_blacklist(os.getenv('VK_ID'), os.getenv('LL_VK_ID')))
-

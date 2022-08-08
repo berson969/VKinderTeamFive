@@ -36,13 +36,13 @@ for event in longpoll.listen():
         print(event.obj)
 
         keyboard = key.get_keyboard()
+    #
+    # elif event.type == VkBotEventType.MESSAGE_EVENT:
+    #
+    #     print(event.obj)
 
-    elif event.type == VkBotEventType.MESSAGE_EVENT:
-
-        print(event.obj)
-
-        peer_id = event.obj['peer_id']
-        event_id = event.obj['event_id']
+        peer_id = event.message['peer_id']
+        # event_id = event.obj['event_id']
         key1 = VkKeyboard(one_time=True, inline=False)
         key1.add_callback_button(label='Начать', color=VkKeyboardColor.POSITIVE,
                                 payload={'text': 'search'})
@@ -50,26 +50,26 @@ for event in longpoll.listen():
         params = {
             'user_id': peer_id,
             'peer_id': peer_id,
-            'group_id': group_id,
+            # 'group_id': group_id,
             'message_id': message_id,
-            'event_id' : event_id,
+            # 'event_id' : event_id,
             'message': 'Second time',
             # 'conversation_message_id': cm_id,
-            'is_hidden': False,
+            # 'is_hidden': False,
             'keyboard': key.get_keyboard()
         }
         vk_gr.method('messages.edit', params)
         print(event.obj)
 # peer_id = peer_id
-# #           'message': message,
-# #           'conversation_message_id': conversation_message_id,
-# #           'attachment': attachment,
-# #           'keyboard': keyboard
-# #           }
+#           'message': message,
+#           'conversation_message_id': conversation_message_id,
+#           'attachment': attachment,
+#           'keyboard': keyboard
+#           }
 # vk_api_gr_access.messages.edit(peer_id=peer_id, message=message, conversation_message_id=conversation_message_id,
 #                                     attachment=attachment, keyboard=keyboard)
-
-
+#
+#
 # peer_id = self.event.obj.message['peer_id']
 # message = 'Начнем!'
 # keyboard_show_selected = VkKeyboard(one_time=True, inline=False)
