@@ -15,7 +15,6 @@ def users_info(vk_id: int, gr_params):
             Функция получает id пользователя ВК и возвращает данные по нему в виде словаря
 
     :param vk_id
-    :type int
     :param gr_params параметр аутенфикации
 
     :return: user_dict_info { 'vk_id': int, 'first_name': srt, 'last_name': str, 'sex': int
@@ -114,7 +113,7 @@ def search_users(user_id: int, gr_params: str, us_params: str, offset=0):
 if __name__ == '__main__':
     load_dotenv()
     # print(os.getenv('M_VK_ID'))
-    # access_token = os.getenv('GROUP_TOKEN_214815089')
+    # access_token = os.getenv('GROUP_TOKEN')
     # token = getting_tokens(os.getenv('VK_LOGIN'), os.getenv('VK_PASSWORD'), os.getenv('CLIENT_ID2'),
     #                       os.getenv('GROUP_ID2'))
     # access_user = os.getenv('USER_TOKEN_berson2005@yandex.ru')

@@ -13,6 +13,9 @@ import os
 load_dotenv('.env', override=True)
 LOGIN = os.getenv('VK_LOGIN')
 PASSWORD = os.getenv('VK_PASSWORD')
+PATTERN_GROUP = r"(https://api.vk.com/blank.html#expires_in=0&access_token_)(\d+)(\=)([a-zA-Z0-9\.\-\_]+)"
+PATTERN_USER = r"(https://api.vk.com/blank.html)(\#)(access_token=)([a-zA-Z0-9\.\_\-]+)" \
+                   r"(\&)(expires_in=)(\d+)(\&)(user_id=)(\d+)(\&)(state=347650)"
 
 
 class AuthAccess:
@@ -21,8 +24,19 @@ class AuthAccess:
         self.group_id = group_id
         self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
 
-    # Authorization Code Flow method for get tokens by selenium
     def get_token(self, url, pattern, token_name) -> str:
+        """
+                Authorization Code Flow method for get tokens by selenium
+                writing  different tokens  to file .env
+                IMPORTANT!! Need switch to push authorization in VK app
+                https://grandguide.ru/otklyuchit-dvuhfaktornuyu-autentifikaciyu-vk-vkontakte/
+
+        :param url:
+        :param pattern:
+        :param token_name: str
+        :return: token: str
+
+        """
         if os.getenv(token_name) is not None:
             return os.getenv(token_name)
         self.driver.get(url)
@@ -46,9 +60,15 @@ class AuthAccess:
         return token
 
 
-# Getting token by Implicit Flow for groups  https://dev.vk.com/api/access-token/implicit-flow-community
 def group_token_get(client_id, group_id):
-    PATTERN_GROUP = r"(https://api.vk.com/blank.html#expires_in=0&access_token_)(\d+)(\=)([a-zA-Z0-9\.\-\_]+)"
+    """
+            Getting token by Implicit Flow for groups
+              https://dev.vk.com/api/access-token/implicit-flow-community
+    :param client_id: int
+    :param group_id: int
+
+    :return: GROUP_TOKEN: str
+    """
     group_creator = AuthAccess(client_id, group_id)
     url_group = f'https://oauth.vk.com/authorize?client_id={client_id}&group_ids={group_id}' \
                 f'&redirect_uri=https://vk.com/club214815089&display=page' \
@@ -57,10 +77,14 @@ def group_token_get(client_id, group_id):
     return group_creator.get_token(url_group, PATTERN_GROUP, group_token_name)
 
 
-# Getting token by Authorization Code Flow for users https://dev.vk.com/api/access-token/authcode-flow-user
 def user_token_get(client_id):
-    PATTERN_USER = r"(https://api.vk.com/blank.html)(\#)(access_token=)([a-zA-Z0-9\.\_\-]+)" \
-                   r"(\&)(expires_in=)(\d+)(\&)(user_id=)(\d+)(\&)(state=347650)"
+    """
+            Getting token by Authorization Code Flow for users
+             https://dev.vk.com/api/access-token/authcode-flow-user
+    :param client_id: int
+
+    :return: USER_TOKEN: str
+    """
     user_creator = AuthAccess(client_id)
     url_user = f'https://oauth.vk.com/authorize?client_id={client_id}&redirect_uri=' \
                f'https://vk.com/club214815089&display=page&scope=friends,groups' \
@@ -70,10 +94,7 @@ def user_token_get(client_id):
 
 
 if __name__ == '__main__':
-    group_id = '214792702'
-    group_id2 = '214815089'
-    client_id2 = '8231976'
-    access_token = group_token_get(client_id2, group_id2)
+    access_token = group_token_get(os.getenv('CLIENT_ID2'), os.getenv('GROUP_ID'))
     print(access_token)
-    access_user = user_token_get(client_id2)
+    access_user = user_token_get(os.getenv('CLIENT_ID2'))
     print(access_user)
