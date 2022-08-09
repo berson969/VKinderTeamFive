@@ -1,4 +1,5 @@
 import sys
+import time
 from pprint import pprint
 from vk_api.bot_longpoll import VkBotEventType, VkBotLongPoll
 from vk_api.utils import get_random_id
@@ -8,29 +9,13 @@ from database import add_whitelist, add_blacklist, choose_favorites
 from bot_auth import Auth
 
 
-class SelectedIterator():
-    """
-       Класс, позволяющий итерировать данные из поиска
-       выдает по одному пользователя за раз
-       __next__ возвращает словарь вида значение 'id': int
-    """
-
-    def __init__(self, search_list):
-        try:
-            self.response = search_list
-            self.count = len(self.response)
-        except KeyError as kE:
-            print(kE)
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        if self.count > 0:
-            selected = self.response[self.count - 1]
-            self.count -= 1
-            return selected['id'], self.count
-        return False, False
+def keyboard_creator():
+    keyboard = VkKeyboard(inline=False, one_time=True)
+    keyboard.add_callback_button(label='Показ выбранных',color=VkKeyboardColor.POSITIVE,
+                                                   payload={"callback": "chosen"} )
+    keyboard.add_callback_button(label='Закончить',color=VkKeyboardColor.SECONDARY,
+                                                   payload={"callback": "exit"})
+    return keyboard.get_keyboard()
 
 
 class DatingBot(Auth):
@@ -39,23 +24,11 @@ class DatingBot(Auth):
     """
 
     def __init__(self):
-
         super().__init__()
         self.selected_id = None
         self.count = None
-        self.user_id = None
-        self.event = None
-        self.longpoll = VkBotLongPoll(self.vk_gr_session, group_id=self.group_id)
+        self.vk_id = None
 
-    def iteration(self, dict_info: dict):
-        """
-          Метод назначения итератора, служит для запуска итерирования
-        :param dict_info: dict
-        :param self._iter__next__()
-        :return: None
-        """
-        response = search_users(dict_info, self.us_params)
-        self._iter = SelectedIterator(response)
 
 
     def write_msg(self, user_id: int, message=None, keyboard=None, attachment=None):
@@ -86,10 +59,11 @@ class DatingBot(Auth):
                   'keyboard': keyboard
                   }
         self.vk_gr_session.method('messages.send', params)
+        # pprint(self.event.obj)
 
     def edit_msg(self, peer_id: int, conversation_message_id: int, message=None, keyboard=None, attachment=None):
         """
-            Редактирует сообщения и клавиатуры в боте VK
+            Редактирует сообщения и клавиатуры в боте VK( у меня не работает(((
             :param peer_id
             :type int
             :param message
@@ -111,40 +85,53 @@ class DatingBot(Auth):
                                             conversation_message_id=conversation_message_id, attachment=attachment,
                                             keyboard=keyboard)
 
-    def show_selected(self, user_id):
+    def _iter_selected(self, dict_info):
         """
-                Метод формирует фото кандидата и отправляет сообщения в Bot
-
-
-        :param user_id
-         :var int
-
-        :return: selected_dict_info ['id']
-         :type dict
+                Метод инициализации итератора selected
+        :param dict_info:
+        :return: iterator self.selected
+        :return count: int количество обьектов к итераторе
         """
-        selected, count = next(self._iter)
-        self.count = count
-        if selected is False:
-            keyboard = VkKeyboard(one_time=False, inline=False)
-            keyboard.add_callback_button(label='Показать выбранных', color=VkKeyboardColor.POSITIVE,
-                                         payload={"text": "chosen"})
-            keyboard.add_callback_button(label='Закончить', color=VkKeyboardColor.SECONDARY,
-                                         payload={'text': 'exit'})
-            keyboard = keyboard.get_keyboard()
-            self.write_msg(user_id, 'Анкеты закончились', keyboard)
-            return False
-        else:
-            select_info = users_info(selected, self.gr_params, self.us_params)
-            message = f"{select_info['first_name']} {select_info['last_name']}\nhttps://vk.com/id{selected}"
+        self.selected = search_users(dict_info, self.us_params)
+        count = len(self.selected)
+        self.selected = iter(self.selected)
+        return count
+
+    @property
+    def show_selected(self):
+        """
+                Метод формирует фото кандидата и отправляет сообщения в Botб работает за счет итератора
+                self.selected, в конце итерирования возвращает  False
+
+
+
+        :return: select_info
+            :type dict {'vk_id': int, 'first_name': str, 'last_name': str,
+                        'sex': int, 'city_id': int, 'city':  str ,'birth_date': str,
+                        'photos": str
+                  }
+        :return False
+        """
+        try:
+            selected_id = next(self.selected)['id']
+            select_info = users_info(selected_id, self.gr_params, self.us_params)
+            message = f"{select_info['first_name']} {select_info['last_name']}\nhttps://vk.com/id{selected_id}"
             attachment = select_info['photos']
             keyboard = VkKeyboard(one_time=False, inline=True)
             keyboard.add_callback_button(label='Нравится', color=VkKeyboardColor.POSITIVE,
-                                         payload={"text": "add_whitelist"})
+                                         payload={"callback": "add_whitelist"})
             keyboard.add_callback_button(label='Не нравится', color=VkKeyboardColor.NEGATIVE,
-                                         payload={"text": "add_blacklist"})
+                                         payload={"callback": "add_blacklist"})
+            keyboard.add_line()
+            keyboard.add_callback_button(label='Следующие', color=VkKeyboardColor.PRIMARY,
+                                         payload={"callback": "next"})
+
             keyboard = keyboard.get_keyboard()
-            self.write_msg(user_id, message, keyboard, attachment)
+            self.write_msg(self.vk_id, message, keyboard, attachment)
             return select_info
+        except StopIteration:
+            self.write_msg(self.vk_id, 'Анкеты закончились ((', keyboard_creator())
+            return False
 
     def messagerBot(self):
         """
@@ -163,92 +150,64 @@ class DatingBot(Auth):
                     'peer_id': int, 'random_id': int, 'text': 'dsvgdf'}}
 
         """
-        for self.event in self.longpoll.listen():
+        longpoll = VkBotLongPoll(self.vk_gr_session, group_id=self.group_id)
+        for event in longpoll.listen():
 
-            if self.event.type == VkBotEventType.MESSAGE_NEW and self.event.message['text']:
-                response = self.event.message['text'].lower()
-                self.vk_id = self.event.message['from_id']
-                if response in  ['привет', 'hello', 'start', 'hi']:
-                    user_dict_info = users_info(self.vk_id, self.gr_params, self.us_params)
-                    keyboard_start = VkKeyboard(one_time=True, inline=False)
-                    keyboard_start.add_callback_button(label='ДА, начать!', color=VkKeyboardColor.POSITIVE,
-                                                       payload={'text': 'search'})
-                    # self.conversation_message_id = self.event.obj.message['conversation_message_id']
+            if event.type == VkBotEventType.MESSAGE_NEW:
 
+                response = event.message['text'].lower()
+                self.vk_id = event.message['from_id']
+                user_dict_info = users_info(self.vk_id, self.gr_params, self.us_params)
+# Стартовый запрос
+                if response in ['привет', 'hello', 'start', 'hi', '/', 'ghbdtn']:
                     message = f"Хай, {user_dict_info['first_name']}! Хочешь познакомиться?"
-                    keyboard = keyboard_start.get_keyboard()
-                    self.write_msg(self.vk_id, message, keyboard)
-                    # pprint(self.event.obj)
+                    keyboard_start = VkKeyboard(one_time=False, inline=False)
+                    keyboard_start.add_callback_button(label='ДА, начать!',
+                                                       color=VkKeyboardColor.POSITIVE,
+                                                       payload={"callback": "search"})
+                    self.write_msg(self.vk_id, message, keyboard_start.get_keyboard())
                 elif response == '/exit':
                     sys.exit()
                 else:
                     self.write_msg(self.vk_id, 'Не поняла Вашего вопроса', [])
-
-            elif self.event.type == VkBotEventType.MESSAGE_EVENT:
-
-                if self.event.obj.payload['text'] == "search":
-                    self.iteration(user_dict_info)
-                    keyboard_show_selected = VkKeyboard(one_time=False, inline=False)
-                    keyboard_show_selected.add_callback_button(label='Следующие', color=VkKeyboardColor.PRIMARY,
-                                                               payload={'text': 'next'})
-                    keyboard_show_selected.add_line()
-                    keyboard_show_selected.add_callback_button(label='Показать выбранные',
-                                                               color=VkKeyboardColor.POSITIVE,
-                                                               payload={'text': 'chosen'})
-                    keyboard_show_selected.add_callback_button(label='Закончить', color=VkKeyboardColor.SECONDARY,
-                                                               payload={'text': 'exit'})
-                    self.write_msg(self.vk_id, f'Готовим анкеты', keyboard_show_selected.get_keyboard())
-                    self.write_msg(self.vk_id, f'Начинаем!!', {})
-                    self.selected_dict_info = self.show_selected(self.vk_id)
-                    # pprint(self.event.obj)
-
-                elif self.event.obj.payload['text'] == "add_whitelist":
-                    res = add_whitelist(user_dict_info, self.selected_dict_info)
+            elif event.type == VkBotEventType.MESSAGE_EVENT:
+# Запрос на поиск по базe
+                if event.obj.payload['callback'] == "search":
+                    user_dict_info = users_info(self.vk_id, self.gr_params, self.us_params)
+                    count = self._iter_selected(user_dict_info)
+                    selected_dict_info = self.show_selected
+                    self.write_msg(self.vk_id, f"Найдено  {count} анкет", keyboard_creator())
+                    time.sleep(3)
+# Запрос на обработку белого листа
+                elif event.obj.payload['callback'] == "add_whitelist":
+                    selected_dict_info = self.show_selected
+                    res = add_whitelist(user_dict_info, selected_dict_info)
                     print(res)
-                    self.selected_dict_info = self.show_selected(self.vk_id)
-                    # print()
-                # Запрос 4
-                elif self.event.obj.payload['text'] == "add_blacklist":
-                    res = add_blacklist(user_dict_info, self.selected_dict_info['vk_id'])
+
+# Запрос на обработку блеклиста
+                elif event.obj.payload['callback'] == "add_blacklist":
+                    selected_dict_info = self.show_selected
+                    res = add_blacklist(user_dict_info, selected_dict_info['vk_id'])
                     print(res)
-                    self.selected_dict_info = self.show_selected(self.vk_id)
-                    # print()
-                # запрос 5
-                elif self.event.obj.payload['text'] == "next":
-                    self.selected_id = self.show_selected(self.vk_id)
-                    keyboard_show_selected = VkKeyboard(one_time=True, inline=False)
-                    keyboard_show_selected.add_callback_button(label='Следующие', color=VkKeyboardColor.PRIMARY,
-                                                               payload={'text': 'next'})
-                    keyboard_show_selected.add_line()
-                    keyboard_show_selected.add_callback_button(label='Показать выбранные',
-                                                               color=VkKeyboardColor.POSITIVE,
-                                                               payload={'text': 'chosen'})
-                    keyboard_show_selected.add_callback_button(label='Закончить', color=VkKeyboardColor.SECONDARY,
-                                                               payload={'text': 'exit'})
-                    keyboard = keyboard_show_selected.get_keyboard()
-                    self.write_msg(self.vk_id, f'Осталось {self.count} анкет', keyboard_show_selected.get_keyboard())
-                    # print()
-                # Запрос на выход
-                elif self.event.obj.payload['text'] == "exit":
-                    # keyboard_exit = sjson.dumps('{"buttons":[],"one_time":True}')
-                    self.write_msg(self.vk_id, 'До новых встреч!!', {})
-                # Показ анкет
-                elif self.event.obj.payload['text'] == "chosen":
-                    keyboard_chosen = VkKeyboard(one_time=True, inline=False)
-                    keyboard_chosen.add_callback_button(label='Показать еще', color=VkKeyboardColor.PRIMARY,
-                                                        payload={'text': 'next'})
-                    keyboard_chosen.add_line()
-                    keyboard_chosen.add_callback_button(label='Закончить',
-                                                        color=VkKeyboardColor.SECONDARY,
-                                                        payload={'text': 'exit'})
-                    self.write_msg(self.vk_id, 'ВЫБРАННЫЕ АНКЕТЫ', keyboard_chosen.get_keyboard())
+
+# запрос на продолжение  вывод данных и окончание
+                elif event.obj.payload['callback'] == "next":
+                    selected_dict_info = self.show_selected
+                    self.write_msg(self.vk_id, 'Продолжай!', keyboard_creator())
+# Показ анкет
+                elif event.obj.payload['callback'] == "chosen":
+                    self.write_msg(self.vk_id, 'Подождите готовлю анкеты', VkKeyboard(one_time=False).get_empty_keyboard())
                     for selected in choose_favorites(self.vk_id):
                         keyboard_select = VkKeyboard(inline=True)
                         keyboard_select.add_openlink_button(label=f"https://vk.com/id{selected['id']}",
                                                             link=f"https://vk.com/id{selected['id']}")
-                        self.write_msg(self.vk_id, f"{selected['first_name']}"
-                                                   f" {selected['last_name']}", keyboard_select.get_keyboard(),
-                                       selected['long_photo_name'])
+                        self.write_msg(self.vk_id, f"{selected['first_name']} {selected['last_name']}",
+                                       keyboard_select.get_keyboard(),
+                                       selected['photos'])
+                    self.write_msg(self.vk_id, 'Продолжить поиск?', keyboard_creator())
+# Запрос на выход
+                elif event.obj.payload['callback'] == "exit":
+                    self.write_msg(self.vk_id, 'До новых встреч!!', VkKeyboard(one_time=False).get_empty_keyboard())
 
 
 if __name__ == '__main__':

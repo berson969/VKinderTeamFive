@@ -55,10 +55,10 @@ def users_info(vk_id: int, gr_params: dict, us_params: dict):
     for item in response1['response']['items']:
         photo_dict = {'likes': item['likes']['count'] + item['likes']['user_likes'], 'photo_name': f"photo{item['owner_id']}_{item['id']}"}
         photo_list.append(photo_dict)
-    long_name_photo = ''
-    for photo in (sorted(photo_list, key=lambda d: d['likes'])[:3]):
-        long_name_photo += f"{photo['photo_name']},"
-    user_dict_info['photos'] = long_name_photo
+    long_name = ''
+    for _photos in sorted(photo_list, key=lambda d: d['likes'], reverse=True)[:3]:
+        long_name += f"{_photos['photo_name']},"
+    user_dict_info['photos'] = long_name
     return user_dict_info
 
 
@@ -82,6 +82,7 @@ def search_users(user_dict_info: dict, us_params: str, offset=0):
         # raise TypeError
     else:
         age = int((datetime.datetime.now() - parse(user_dict_info['birth_date'])).days / 365)
+
     if user_dict_info['sex'] == 1:
         sex_opposite = 2
         age -= 5
@@ -97,6 +98,8 @@ def search_users(user_dict_info: dict, us_params: str, offset=0):
               'fields': ['photo', ' screen_name']
               }
     response = requests.get(f'{URL}users.search', params={**us_params, **params}).json()
+    if response['response']['count'] >= 1000:
+        pass
     # pprint(response)
     search_result = [{'id': x['id'], 'first_name': x['first_name'], 'last_name': x['last_name']} for x in response['response']['items'] if x['is_closed'] == False]
     return search_result
@@ -104,6 +107,7 @@ def search_users(user_dict_info: dict, us_params: str, offset=0):
 
 if __name__ == '__main__':
     load_dotenv()
+    user = Auth()
     # print(os.getenv('M_VK_ID'))
     # access_token = os.getenv('GROUP_TOKEN')
     # token = getting_tokens(os.getenv('VK_LOGIN'), os.getenv('VK_PASSWORD'), os.getenv('CLIENT_ID2'),

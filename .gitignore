@@ -3,3 +3,4 @@
 __pycache__/
 Tests/
 photos.py
+/bot_bottle.py

@@ -10,6 +10,18 @@ Base = declarative_base()
 
 
 class Person(Base):
+    """
+        Наследный клаас Person, хранит сведения о пользователе ВК
+
+        :type vk_id
+        :type first_name
+        :type last_name
+        :type sex
+        :type birth_date
+        :type city_id
+        :type city
+        :type photos
+    """
     __tablename__ = 'persons'
 
     vk_id = Column(Integer, primary_key=True)
@@ -23,6 +35,15 @@ class Person(Base):
 
 
 class WhiteList(Base):
+    """
+            Наследный класс WhiteList хранит информацию о понравившихся людях
+
+            :type id
+            :type user_id
+                :key -> Person.vk_id
+            :type select_id
+                :key -> Person.vk_id
+        """
     __tablename__ = 'whitelist'
 
     id = Column(Integer, primary_key=True)
@@ -32,6 +53,14 @@ class WhiteList(Base):
 
 
 class BlackList(Base):
+    """
+        Наследный класс BlackeList хранит информацию по непонравившимся людям
+
+        :type id
+        :type user_id
+            :key -> Person.vk_id
+        :type select_id
+    """
     __tablename__ = 'blacklist'
 
     id = Column(Integer, primary_key=True)
@@ -131,17 +160,20 @@ def add_blacklist(user_dict_info: dict, select_id: int):
     return False
 
 
-def choose_favorites(vk_id: int, favorites=[]):
+def choose_favorites(vk_id: int):
     """
         Функция выводит всех понравившихся кандидатов
 
         :param vk_id:
-        :return: favorites: json [{'vk_id': int, 'first_name': str, 'last_name': str, 'photo': str}, ...]
+        :return: favorites: json [{'id': int, 'first_name': str, 'last_name': str, 'photos': str}, ...]
     """
     session = open_session()
-    res = session.query(Person).join(WhiteList, (WhiteList.select_id == Person.vk_id)).filter(WhiteList.user_id == vk_id).all()
+    res = session.query(Person).join(WhiteList, (WhiteList.select_id == Person.vk_id)).\
+        filter(WhiteList.user_id == vk_id).all()
+    favorites = []
     for fav in res:
-        favorites.append({'vk_id': fav.vk_id, 'first_name': fav.first_name, 'last_name': fav.last_name, 'photos': fav.photos})
+        favorites.append({'id': fav.vk_id, 'first_name': fav.first_name, 'last_name': fav.last_name,
+                          'photos': fav.photos})
     session.close()
     return favorites
 
