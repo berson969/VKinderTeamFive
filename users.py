@@ -1,7 +1,5 @@
-import datetime
 import os
 from pprint import pprint
-from dateutil.parser import parse
 import requests
 from dotenv import load_dotenv
 
@@ -64,7 +62,7 @@ def users_info(vk_id: int, gr_params: dict, us_params: dict):
 
 def search_users(user_dict_info: dict, us_params: str, offset=0):
     """
-            Функция ищет кандидатов удовлетворяющих заданным условиям
+            Функция ищет кандидатов удовлетворяющих заданным условиям для поиска используется дополнительный ключ ['age']
 
     :param user_dict_info: dict
     :type dict
@@ -76,24 +74,9 @@ def search_users(user_dict_info: dict, us_params: str, offset=0):
     :return json search_result
             [{'id': int, 'first_name': str, 'last_name': str}, ... ]
     """
-    # dict_info = users_info(user_id, gr_params)
-    if len(user_dict_info['birth_date']) < 8:
-        age = 35
-        # raise TypeError
-    else:
-        age = int((datetime.datetime.now() - parse(user_dict_info['birth_date'])).days / 365)
-
-    if user_dict_info['sex'] == 1:
-        sex_opposite = 2
-        age -= 5
-    elif user_dict_info['sex'] == 2:
-        sex_opposite = 1
-        age += 5
-    else:
-        sex_opposite = 0
     params = {'count': 100, 'offset': offset, 'city': user_dict_info['city_id'],
-              'sex': sex_opposite, 'status': [1, 5, 6],
-              'age from': age - 5, 'age_to': age + 5, 'has_photo': 1,
+              'sex': {1:2,2:1,0:0}[user_dict_info['sex']], 'status': [1, 5, 6],
+              'age from': user_dict_info['age'] - 5, 'age_to': user_dict_info['age'] + 5, 'has_photo': 1,
               'is_closed': False,
               'fields': ['photo', ' screen_name']
               }
@@ -101,7 +84,8 @@ def search_users(user_dict_info: dict, us_params: str, offset=0):
     if response['response']['count'] >= 1000:
         pass
     # pprint(response)
-    search_result = [{'id': x['id'], 'first_name': x['first_name'], 'last_name': x['last_name']} for x in response['response']['items'] if x['is_closed'] == False]
+    search_result = [{'id': x['id'], 'first_name': x['first_name'], 'last_name': x['last_name']}
+                     for x in response['response']['items'] if x['is_closed'] == False]
     return search_result
 
 
@@ -116,7 +100,9 @@ if __name__ == '__main__':
     user = Auth()
     # print(user.__repr__())
     result = users_info(os.getenv('VK_ID'), user.gr_params, user.us_params)
-    result2 = search_users(users_info(os.getenv('VK_ID'), user.gr_params, user.us_params), user.us_params)
+    result['age'] = 35
+
+    result2 = search_users(result, user.us_params)
     # print(users_info(os.getenv('N_VK_ID')), user.gr_params)
     pprint(result)
     pprint(result2)

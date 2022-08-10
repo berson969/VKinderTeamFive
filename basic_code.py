@@ -1,21 +1,34 @@
 import sys
-import time
-from pprint import pprint
+from datetime import datetime
 from vk_api.bot_longpoll import VkBotEventType, VkBotLongPoll
 from vk_api.utils import get_random_id
 from vk_api.keyboard import VkKeyboard, VkKeyboardColor
+
 from users import users_info, search_users
 from database import add_whitelist, add_blacklist, choose_favorites
 from bot_auth import Auth
 
 
-def keyboard_creator():
-    keyboard = VkKeyboard(inline=False, one_time=True)
-    keyboard.add_callback_button(label='Показ выбранных',color=VkKeyboardColor.POSITIVE,
-                                                   payload={"callback": "chosen"} )
-    keyboard.add_callback_button(label='Закончить',color=VkKeyboardColor.SECONDARY,
-                                                   payload={"callback": "exit"})
-    return keyboard.get_keyboard()
+def keyboard_creator(flag):
+    """
+        Изготавливает клавиатуры на вход передается flag соответствующей клавиатуры
+
+    :param flag: 'chosen', 'start'
+    :return: keydoard
+    """
+    if flag == 'chosen':
+        keyboard = VkKeyboard(inline=False, one_time=True)
+        keyboard.add_callback_button(label='Показ выбранных',color=VkKeyboardColor.POSITIVE,
+                                                       payload={"callback": "chosen"} )
+        keyboard.add_callback_button(label='Закончить',color=VkKeyboardColor.SECONDARY,
+                                                       payload={"callback": "exit"})
+        return keyboard.get_keyboard()
+    elif flag == 'start':
+        keyboard_start = VkKeyboard(one_time=False, inline=False)
+        keyboard_start.add_callback_button(label='ДА, начать!',
+                                           color=VkKeyboardColor.POSITIVE,
+                                           payload={"callback": "search"})
+        return keyboard_start.get_keyboard()
 
 def write_msg(user_id: int, message=None, keyboard=None, attachment=None):
     """
@@ -111,7 +124,6 @@ def show_selected(vk_id: int, _selected):
         keyboard.add_line()
         keyboard.add_callback_button(label='Следующие', color=VkKeyboardColor.PRIMARY,
                                      payload={"callback": "next"})
-
         keyboard = keyboard.get_keyboard()
         write_msg(vk_id, message, keyboard, attachment)
         return select_info
@@ -145,23 +157,29 @@ def messagerBot():
             user_dict_info = users_info(event.message['from_id'], main_process.gr_params, main_process.us_params)
 # Стартовый запрос
             if response in ['привет', 'hello', 'start', 'hi', '/', 'ghbdtn']:
-                message = f"Хай, {user_dict_info['first_name']}! Хочешь познакомиться?"
-                keyboard_start = VkKeyboard(one_time=False, inline=False)
-                keyboard_start.add_callback_button(label='ДА, начать!',
-                                                   color=VkKeyboardColor.POSITIVE,
-                                                   payload={"callback": "search"})
-                write_msg(event.message['from_id'], message, keyboard_start.get_keyboard())
+                write_msg(event.message['from_id'], f"Хай, {user_dict_info['first_name']}! Хочешь познакомиться?")
+                if len(user_dict_info['birth_date'].split('.')) != 3:
+                    write_msg(user_dict_info['vk_id'], "Сколько тебе лет?")
+                    # print(event.obj)
+                else:
+                    age = int((datetime.now() - datetime.strptime(user_dict_info['birth_date'], "%d.%m.%Y")).days / 365)
+                    user_dict_info['age'] = age
+                    write_msg(event.message['from_id'], 'Начнем?', keyboard_creator('start'))
+# Запрос возраста    and int(response) in range(16,100) and event.message['from_id'] == cm_id
+            elif response.isdigit() and int(response) in range(16, 99):
+                user_dict_info['age'] = int(response)
+                write_msg(event.message['from_id'], 'Начнем?', keyboard_creator('start'))
             elif response == '/exit':
                 sys.exit()
             else:
+                # print(event.obj)
                 write_msg(event.message['from_id'], 'Не поняла Вашего вопроса', [])
         elif event.type == VkBotEventType.MESSAGE_EVENT:
 # Запрос на поиск по базe
             if event.obj.payload['callback'] == "search":
-                user_dict_info = users_info(event.obj.peer_id, main_process.gr_params,main_process.us_params)
                 _selected, count = _iter_selected(user_dict_info)
                 selected_dict_info = show_selected(event.obj.peer_id,  _selected)
-                write_msg(event.obj.peer_id, f"Найдено  {count} анкет", keyboard_creator())
+                write_msg(event.obj.peer_id, f"Найдено  {count} анкет", keyboard_creator('chosen'))
 # Запрос на обработку белого листа
             elif event.obj.payload['callback'] == "add_whitelist":
                 selected_dict_info = show_selected(event.obj.peer_id,  _selected)
@@ -177,7 +195,7 @@ def messagerBot():
 # запрос на продолжение  вывод данных и окончание
             elif event.obj.payload['callback'] == "next":
                 selected_dict_info = show_selected(event.obj.peer_id, _selected)
-                write_msg((event.message.peer_id), 'Продолжай!', keyboard_creator())
+                write_msg((event.message.peer_id), 'Продолжай!', keyboard_creator('chosen'))
 # Показ анкет
             elif event.obj.payload['callback'] == "chosen":
                 write_msg(event.obj.peer_id, 'Подождите готовлю анкеты', VkKeyboard(one_time=False).get_empty_keyboard())
@@ -188,7 +206,7 @@ def messagerBot():
                     write_msg(event.obj.peer_id, f"{selected['first_name']} {selected['last_name']}",
                                    keyboard_select.get_keyboard(),
                                    selected['photos'])
-                write_msg(event.obj.peer_id, 'Продолжить поиск?', keyboard_creator())
+                write_msg(event.obj.peer_id, 'Продолжить поиск?', keyboard_creator('chosen'))
 # Запрос на выход
             elif event.obj.payload['callback'] == "exit":
                 write_msg(event.obj.peer_id, 'До новых встреч!!', VkKeyboard(one_time=False).get_empty_keyboard())
