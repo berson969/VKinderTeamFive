@@ -2,5 +2,5 @@ USER =                           # postgres login
 PASSWORD =                       # postgres password
 VK_LOGIN =                       # user login VK
 VK_PASSWORD =                    # password user VK
-GROUP_ID = '214815089'          # VKinder2 id
-CLIENT_ID =
+GROUP_ID = '214815089'           # VKinder2 id
+CLIENT_ID = '8231976'            # id приложения
