@@ -3,4 +3,7 @@
 __pycache__/
 Tests/
 photos.py
-/bot_bottle.py
+bot_bottle.py
+messages_edit.py
+vk_response.py
+
