@@ -62,9 +62,12 @@ def users_info(vk_id: int, gr_params: dict, us_params: dict):
 
 def search_users(user_dict_info: dict, us_params: str, offset=0):
     """
-            Функция ищет кандидатов удовлетворяющих заданным условиям для поиска используется дополнительный ключ ['age']
+            Функция ищет кандидатов удовлетворяющих заданным условиям для
+            поиска используется дополнительный ключ ['age']
 
-    :param user_dict_info: dict
+    :param user_dict_info: { 'vk_id': int, 'first_name': srt, 'last_name': str, 'sex': int
+                             'city_id': int, 'city':  str ,'birth_date': str, 'age': int , photos": str
+                             }
     :type dict
     :param us_params параметр аутенфикации
     :var  {'response': {'count': int,
@@ -85,7 +88,7 @@ def search_users(user_dict_info: dict, us_params: str, offset=0):
         pass
     # pprint(response)
     search_result = [{'id': x['id'], 'first_name': x['first_name'], 'last_name': x['last_name']}
-                     for x in response['response']['items'] if x['is_closed'] == False]
+                     for x in response['response']['items'] if x['is_closed'] is False]
     return search_result
 
 

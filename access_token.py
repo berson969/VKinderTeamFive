@@ -19,12 +19,16 @@ PATTERN_USER = r"(https://api.vk.com/blank.html)(\#)(access_token=)([a-zA-Z0-9\.
 
 
 class AuthAccess:
+    """
+        Класс получения токенов
+        :return tokens
+    """
     def __init__(self, client_id, group_id=0):
         self.client_id = client_id
         self.group_id = group_id
-        self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+        # self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
 
-    def get_token(self, url, pattern, token_name) -> str:
+    def get_token(self, url: str, pattern: str, token_name: str) -> str:
         """
                 Authorization Code Flow method for get tokens by selenium
                 writing  different tokens  to file .env
@@ -38,22 +42,34 @@ class AuthAccess:
 
         """
         if os.getenv(token_name) is not None:
-            return os.getenv(token_name)
-        self.driver.get(url)
-        WebDriverWait(self.driver, 30).until \
-            (EC.presence_of_element_located((By.XPATH, "//button[@class='flat_button oauth_button button_wide']")))
-        login_form = self.driver.find_element(By.NAME, 'email')
+
+            flag = input('The token already exists. Renew it? Y/n ').lower()
+            if flag == 'y':
+                file_new = ''
+                with open('.env', 'r') as f:
+                    for line in f.readlines():
+                        if line.find(token_name) == -1:
+                            file_new += line
+                with open('.env', 'w') as fn:
+                    fn.write(file_new)
+            else:
+                return os.getenv(token_name)
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+        driver.get(url)
+        WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.XPATH, "//button[@class='flat_button "
+                                                                                       "oauth_button button_wide']")))
+        login_form = driver.find_element(By.NAME, 'email')
         login_form.send_keys(LOGIN)
-        password_form = self.driver.find_element(By.NAME, 'pass')
+        password_form = driver.find_element(By.NAME, 'pass')
         password_form.send_keys(PASSWORD)
-        button_form = self.driver.find_element(By.XPATH, "//button[@class='flat_button oauth_button button_wide']")
+        button_form = driver.find_element(By.XPATH, "//button[@class='flat_button oauth_button button_wide']")
         button_form.click()
-        WebDriverWait(self.driver, 30).until(EC.presence_of_element_located
+        WebDriverWait(driver, 30).until(EC.presence_of_element_located
                                              ((By.XPATH, "//*[@class='flat_button fl_r button_indent']")))
         time.sleep(1)
-        button_form = self.driver.find_element(By.XPATH, "//button[@class='flat_button fl_r button_indent']")
+        button_form = driver.find_element(By.XPATH, "//button[@class='flat_button fl_r button_indent']")
         button_form.click()
-        token = re.sub(pattern, r'\4', self.driver.current_url)
+        token = re.sub(pattern, r'\4', driver.current_url)
         next_ = open('.env', 'a')
         next_.writelines(f"{token_name} = '{token}'\n")
         next_.close()
@@ -73,7 +89,7 @@ def group_token_get(client_id, group_id):
     url_group = f'https://oauth.vk.com/authorize?client_id={client_id}&group_ids={group_id}' \
                 f'&redirect_uri=https://vk.com/club214815089&display=page' \
                 f'&scope=messages,photos,stories,manage,docs&response_type=token&v=5.131'
-    group_token_name = f'GROUP_TOKEN'
+    group_token_name = 'GROUP_TOKEN'
     return group_creator.get_token(url_group, PATTERN_GROUP, group_token_name)
 
 
@@ -89,7 +105,7 @@ def user_token_get(client_id):
     url_user = f'https://oauth.vk.com/authorize?client_id={client_id}&redirect_uri=' \
                f'https://vk.com/club214815089&display=page&scope=friends,groups' \
                f'&response_type=token&v=5.131&state=347650&revoke=1'
-    user_token = f'USER_TOKEN'
+    user_token = 'USER_TOKEN'
     return user_creator.get_token(url_user, PATTERN_USER, user_token)
 
 

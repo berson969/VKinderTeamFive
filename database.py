@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 import sqlalchemy as sq
 from sqlalchemy import Column, Integer, String, ForeignKey, create_engine, ForeignKeyConstraint, MetaData
-from sqlalchemy.orm import declarative_base, relationship, sessionmaker, mapper
+from sqlalchemy.orm import declarative_base, sessionmaker
 from bot_auth import Auth
 from users import users_info
 
@@ -28,10 +28,11 @@ class Person(Base):
     first_name = Column(String(length=30), nullable=False)
     last_name = Column(String(length=30), nullable=False)
     sex = Column(Integer, nullable=False)
-    birth_date = Column(String, nullable=False)
+    birth_date = Column(String, nullable=True)
     city_id = Column(Integer, nullable=True)
     city = Column(String, nullable=True)
     photos = Column(String, nullable=True)
+    age = Column(Integer, nullable=True)
 
 
 class WhiteList(Base):
