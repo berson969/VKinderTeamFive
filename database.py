@@ -21,6 +21,7 @@ class Person(Base):
         :type city_id
         :type city
         :type photos
+        :type age
     """
     __tablename__ = 'persons'
 
