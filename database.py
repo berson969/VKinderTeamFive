@@ -56,7 +56,7 @@ class WhiteList(Base):
 
 class BlackList(Base):
     """
-        Наследный класс BlackeList хранит информацию по непонравившимся людям
+        Наследный класс BlackList хранит информацию по непонравившимся людям
 
         :type id
         :type user_id
@@ -130,7 +130,7 @@ def add_whitelist(user_dict_info: dict, select_dict_info: dict):
     add_person_to_base(user_dict_info)
     add_person_to_base(select_dict_info)
     result = session.query(WhiteList).filter(
-        WhiteList.select_id == select_dict_info['vk_id'] and WhiteList.user_id == user_dict_info['vk_id']).first()
+        WhiteList.select_id == select_dict_info['vk_id'],WhiteList.user_id == user_dict_info['vk_id']).first()
     if result is None:
         whitelist_person = WhiteList(user_id=user_dict_info['vk_id'], select_id=select_dict_info['vk_id'])
         session.add(whitelist_person)
@@ -151,8 +151,8 @@ def add_blacklist(user_dict_info: dict, select_id: int):
         :return: True при удачном коммите, False при неудачном
     """
     session = open_session()
-    res = session.query(BlackList).filter(BlackList.select_id == select_id and BlackList.user_id == user_dict_info['vk_id']).first()
-    if res is None:
+    if session.query(BlackList).filter(BlackList.select_id == select_id,
+                                       BlackList.user_id == user_dict_info['vk_id']).first() is None:
         add_person_to_base(user_dict_info)
         blacklist_person = BlackList(user_id=user_dict_info['vk_id'], select_id=select_id)
         session.add(blacklist_person)
@@ -170,8 +170,8 @@ def choose_favorites(vk_id: int):
         :return: favorites: json [{'id': int, 'first_name': str, 'last_name': str, 'photos': str}, ...]
     """
     session = open_session()
-    res = session.query(Person).join(WhiteList, (WhiteList.select_id == Person.vk_id)).\
-        filter(WhiteList.user_id == vk_id).all()
+    res = session.query(Person).join(WhiteList, (WhiteList.select_id == Person.vk_id)).filter(WhiteList.user_id
+                                                                                              == vk_id).all()
     favorites = []
     for fav in res:
         favorites.append({'id': fav.vk_id, 'first_name': fav.first_name, 'last_name': fav.last_name,
@@ -180,14 +180,35 @@ def choose_favorites(vk_id: int):
     return favorites
 
 
+def check_users_in_persons(dict_info: dict, selected_list: list):
+    """
+
+        Фукция проверяет наличия повторений в поиске
+    :param dict_info: dict  информация о клиенте
+    :param selected_list: list
+    :return: selected_list_without_repeat: list  список без повторений
+
+    """
+    session = open_session()
+    selected_new_list = []
+    for select in selected_list:
+        if session.query(WhiteList).filter(WhiteList.user_id == dict_info['vk_id'],
+                                          WhiteList.select_id == select['id']).first() is None:
+            if session.query(BlackList).filter(BlackList.user_id == dict_info['vk_id'],
+                                              BlackList.select_id == select['id']).first() is None:
+                selected_new_list.append(select)
+    session.close()
+    return selected_new_list
+
+
 if __name__ == "__main__":
     load_dotenv()
-    # create_database()
+    create_database()
     user = Auth()
     vk_id = os.getenv('M_VK_ID')
     n_vk_id = os.getenv('N_VK_ID')
     my_vk_id = os.getenv('VK_ID')
-    my_dict_info = users_info( my_vk_id, user.gr_params, user.us_params)
+    n_dict_info = users_info(n_vk_id, user.gr_params, user.us_params)
     l_dict_info = users_info(os.getenv('L_VK_ID'), user.gr_params, user.us_params)
     # использовать только один раз для открытии базы, после строку закомментировать
 
@@ -196,9 +217,9 @@ if __name__ == "__main__":
 
     result3 = add_blacklist(users_info(vk_id, user.gr_params, user.us_params), n_vk_id)
 
-    result4 = add_whitelist(my_dict_info, l_dict_info )
+    result4 = add_whitelist(n_dict_info, l_dict_info)
     print(result4)
-    fav1 = choose_favorites(my_vk_id)
+    fav1 = choose_favorites(n_vk_id)
     print(fav1)
     # for row in fav:
     #     print(row.vk_id, row.name)

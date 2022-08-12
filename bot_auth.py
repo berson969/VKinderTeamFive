@@ -25,7 +25,7 @@ class Auth:
         :param vk_api_us_access
         :param vk_api_gr_access
 
-        :var user_id
+        :var us_id
         :var group_id
         """
         load_dotenv()
